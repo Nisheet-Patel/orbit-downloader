@@ -1,0 +1,136 @@
+/* ------------------------------------------------------------------
+   Orbit — Dark Theme Design System
+   ------------------------------------------------------------------ */
+:root {
+  --bg-primary: #0f1115;
+  --bg-surface: #181b21;
+  --bg-surface-hover: #1f232a;
+  --border-subtle: #2a2f38;
+
+  --text-primary: #e8ecf1;
+  --text-secondary: #9fa6b3;
+  --text-muted: #5c6370;
+
+  --accent: #58a6ff;
+  --accent-hover: #4d8ce0;
+  --success: #3cb371;
+  --error: #e06c75;
+  --warning: #f1c40f;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------
+   Layout
+   ------------------------------------------------------------------ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+
+/* ------------------------------------------------------------------
+   Tabs
+   ------------------------------------------------------------------ */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.45rem 1rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------
+   Tab Panels
+   ------------------------------------------------------------------ */
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.tab-panel {
+  display: none;
+  padding: 1.5rem;
+  height: 100%;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* ------------------------------------------------------------------
+   Placeholder (to be replaced by later tasks)
+   ------------------------------------------------------------------ */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  color: var(--text-muted);
+}
+
+.placeholder h2 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.placeholder p {
+  font-size: 0.95rem;
+  max-width: 400px;
+  text-align: center;
+  line-height: 1.5;
+}

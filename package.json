@@ -1,0 +1,22 @@
+{
+  "name": "orbit-yt-dlp-gui",
+  "version": "1.0.0",
+  "description": "Orbit – YouTube Audio Downloader (Electron rebuild)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "echo \"see task 5\"",
+    "dist:win": "echo \"see task 5\"",
+    "dist:mac": "echo \"see task 5\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron-store": "^8.0.0"
+  },
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
