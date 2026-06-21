@@ -5,12 +5,11 @@ const fs = require('fs');
 const { IPC_CHANNELS } = require('./src/constants');
 const { getSettings, saveSettings } = require('./src/settingsStore');
 const { resolveYtDlpPath } = require('./src/binaryManager');
-const { validateFfmpegPath } = require('./src/ffmpegValidator');
+const { validateFfmpegPath, resolveFfmpegPath } = require('./src/ffmpegValidator');
 const { DownloadManager } = require('./src/downloadManager');
 const { startDownloads } = require('./src/queueRunner');
-const { validateYoutubeUrl } = require('./src/utils');
-
 const { getMetadata } = require('./src/ytdlpRunner');
+const { validateYoutubeUrl } = require('./src/utils');
 
 // Keep a global reference to avoid garbage collection
 let mainWindow;
@@ -18,10 +17,12 @@ const downloadManager = new DownloadManager();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
+    width: 1024,
     height: 700,
-    minWidth: 900,
-    minHeight: 650,
+    minWidth: 960,
+    minHeight: 640,
+    frame: false,
+    icon: path.join(__dirname, 'orbit-logo.ico'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -47,6 +48,10 @@ ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, () => {
   return getSettings();
 });
 
+ipcMain.on('settings:getSync', (event) => {
+  event.returnValue = getSettings();
+});
+
 ipcMain.handle(IPC_CHANNELS.SETTINGS_SAVE, async (_event, partial) => {
   // Gate: if ffmpegLocation is non-empty, it must be valid
   if (partial.ffmpegLocation && String(partial.ffmpegLocation).trim() !== '') {
@@ -66,6 +71,10 @@ ipcMain.handle(IPC_CHANNELS.SETTINGS_SAVE, async (_event, partial) => {
 
 ipcMain.handle(IPC_CHANNELS.FFMPEG_VALIDATE, async (_event, { path: inputPath }) => {
   return validateFfmpegPath(inputPath);
+});
+
+ipcMain.handle(IPC_CHANNELS.FFMPEG_RESOLVE, async (_event, { path: inputPath }) => {
+  return resolveFfmpegPath(inputPath);
 });
 
 ipcMain.handle(IPC_CHANNELS.YTDLP_VALIDATE, async (_event, { path: inputPath }) => {
@@ -125,7 +134,11 @@ function getMainWebContents() {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
 }
 
-ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, urls) => {
+ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, payload) => {
+  const urls = Array.isArray(payload) ? payload : (payload.urls || []);
+  const format = Array.isArray(payload) ? 'audio' : (payload.format || 'audio');
+  const quality = Array.isArray(payload) ? '320' : (payload.quality || '320');
+
   if (!Array.isArray(urls)) {
     return { added: [], duplicates: [], invalid: [] };
   }
@@ -139,7 +152,7 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, urls) => {
       invalid.push(url);
       continue;
     }
-    const result = downloadManager.addTask(url);
+    const result = downloadManager.addTask(url, { format, quality });
     if (result.added) {
       added.push(url);
     } else {
@@ -155,10 +168,11 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, urls) => {
       const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
       if (!ytDlpResult.ok) return;
       try {
-        const meta = await getMetadata(url, ytDlpResult.path);
+        const meta = await getMetadata(url, ytDlpResult.path, settings.cookiesFromBrowser);
         downloadManager.updateTask(url, {
           title: meta.title,
-          duration: meta.duration
+          duration: meta.duration,
+          thumbnailUrl: meta.thumbnailUrl
         }, webContents);
       } catch (_err) {
         // Metadata failures are non-fatal; task stays in queue for retry on start
@@ -223,6 +237,55 @@ ipcMain.handle(IPC_CHANNELS.FOLDER_OPEN, async () => {
   } catch (err) {
     return { success: false, error: err.message || 'Failed to open folder' };
   }
+});
+
+ipcMain.handle('shell:openExternal', async (_event, { url }) => {
+  const { shell } = require('electron');
+  try {
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('app:getVersion', () => {
+  return app.getVersion();
+});
+
+ipcMain.handle(IPC_CHANNELS.METADATA_FETCH, async (_event, { url }) => {
+  const settings = getSettings();
+  const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
+  if (!ytDlpResult.ok) {
+    return { ok: false, error: ytDlpResult.error || 'yt-dlp not available' };
+  }
+  try {
+    const meta = await getMetadata(url, ytDlpResult.path, settings.cookiesFromBrowser);
+    return {
+      ok: true,
+      title: meta.title,
+      thumbnailUrl: meta.thumbnailUrl,
+      duration: meta.duration,
+      channel: meta.uploader,
+      viewCount: meta.viewCount
+    };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Failed to fetch metadata' };
+  }
+});
+
+ipcMain.on(IPC_CHANNELS.WINDOW_MINIMIZE, () => {
+  if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on(IPC_CHANNELS.WINDOW_MAXIMIZE, () => {
+  if (mainWindow) {
+    mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+  }
+});
+
+ipcMain.on(IPC_CHANNELS.WINDOW_CLOSE, () => {
+  if (mainWindow) mainWindow.close();
 });
 
 app.whenReady().then(() => {

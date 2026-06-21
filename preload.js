@@ -4,10 +4,20 @@ const { contextBridge, ipcRenderer } = require('electron');
 // If this script throws, window.orbit will be undefined.
 
 try {
+  try {
+    const settings = ipcRenderer.sendSync('settings:getSync');
+    if (settings && settings.theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (err) {
+    console.error('[preload] theme check failed:', err);
+  }
+
   const IPC_CHANNELS = Object.freeze({
     SETTINGS_GET: 'settings:get',
     SETTINGS_SAVE: 'settings:save',
     FFMPEG_VALIDATE: 'ffmpeg:validate',
+    FFMPEG_RESOLVE: 'ffmpeg:resolve',
     YTDLP_VALIDATE: 'ytdlp:validate',
     YTDLP_ENSURE: 'ytdlp:ensure',
     DIALOG_CHOOSE_DOWNLOAD_FOLDER: 'dialog:chooseDownloadFolder',
@@ -17,6 +27,10 @@ try {
     QUEUE_START: 'queue:start',
     QUEUE_GET: 'queue:get',
     FOLDER_OPEN: 'folder:open',
+    METADATA_FETCH: 'metadata:fetch',
+    WINDOW_MINIMIZE: 'window:minimize',
+    WINDOW_MAXIMIZE: 'window:maximize',
+    WINDOW_CLOSE: 'window:close',
     QUEUE_PROGRESS: 'queue:progress',
     QUEUE_TASK_UPDATED: 'queue:taskUpdated'
   });
@@ -28,6 +42,7 @@ try {
 
     // Validation
     validateFfmpeg: (path) => ipcRenderer.invoke(IPC_CHANNELS.FFMPEG_VALIDATE, { path }),
+    resolveFfmpeg: (path) => ipcRenderer.invoke(IPC_CHANNELS.FFMPEG_RESOLVE, { path }),
     validateYtDlp: (path) => ipcRenderer.invoke(IPC_CHANNELS.YTDLP_VALIDATE, { path }),
     ensureYtDlp: () => ipcRenderer.invoke(IPC_CHANNELS.YTDLP_ENSURE),
 
@@ -35,12 +50,23 @@ try {
     chooseDownloadFolder: () => ipcRenderer.invoke(IPC_CHANNELS.DIALOG_CHOOSE_DOWNLOAD_FOLDER),
 
     // Queue
-    queueAdd: (urls) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, urls),
+    queueAdd: (urls, options) => {
+      if (options && (options.format || options.quality)) {
+        return ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, { urls, ...options });
+      }
+      return ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, urls);
+    },
     queueRemove: (url) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_REMOVE, { url }),
     queueClear: () => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_CLEAR),
     queueGet: () => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_GET),
     queueStart: () => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_START),
     folderOpen: () => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_OPEN),
+    fetchMetadata: (url) => ipcRenderer.invoke(IPC_CHANNELS.METADATA_FETCH, { url }),
+    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    windowMinimize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_MINIMIZE),
+    windowMaximize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_MAXIMIZE),
+    windowClose: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_CLOSE),
 
     // Push event registration
     onQueueProgress: (callback) => {

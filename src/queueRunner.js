@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { STATUS } = require('./constants');
-const { getMetadata, downloadAudio, buildExpectedPath } = require('./ytdlpRunner');
-const { validateFfmpegPath } = require('./ffmpegValidator');
+const { getMetadata, downloadAudio, downloadVideo, buildExpectedPath } = require('./ytdlpRunner');
+const { validateFfmpegPath, resolveFfmpegPath } = require('./ffmpegValidator');
 const { resolveYtDlpPath } = require('./binaryManager');
 
 // ------------------------------------------------------------------
@@ -50,20 +50,15 @@ class Semaphore {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 async function startDownloads({ tasks, settings, downloadManager, webContents }) {
-  // 1. Re-validate FFmpeg immediately before starting (per spec)
-  if (!settings.ffmpegLocation || settings.ffmpegLocation.trim() === '') {
+  // 1. Resolve FFmpeg path
+  const ffmpegResult = await resolveFfmpegPath(settings.ffmpegLocation);
+  if (!ffmpegResult.ok) {
     return {
       success: false,
-      error: 'FFmpeg path is not configured. Please set it in Settings.'
+      error: ffmpegResult.error
     };
   }
-  const ffmpegCheck = await validateFfmpegPath(settings.ffmpegLocation);
-  if (!ffmpegCheck.valid) {
-    return {
-      success: false,
-      error: `FFmpeg re-validation failed: ${ffmpegCheck.reason || 'Invalid path'}`
-    };
-  }
+  const ffmpegPath = ffmpegResult.path;
 
   // 2. Resolve yt-dlp path
   const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
@@ -79,7 +74,6 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
   }
 
   const ytdlpPath = ytDlpResult.path;
-  const ffmpegPath = settings.ffmpegLocation || 'ffmpeg';
   const maxParallel = Math.max(1, Math.min(10, settings.maxParallelDownloads || 3));
   const semaphore = new Semaphore(maxParallel);
 
@@ -118,7 +112,8 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       }, webContents);
 
       // Pre-download file-existence check
-      const expectedPath = buildExpectedPath(metadata.title, settings.downloadLocation);
+      const isVideo = task.format === 'video';
+      const expectedPath = buildExpectedPath(metadata.title, settings.downloadLocation, isVideo ? 'video' : 'audio');
       if (fs.existsSync(expectedPath)) {
         downloadManager.updateTask(task.url, {
           status: STATUS.ALREADY_EXISTS,
@@ -139,12 +134,11 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       if (!taskWithDuration.duration) taskWithDuration.duration = metadata.duration;
 
       await new Promise((resolve) => {
-        const { kill } = downloadAudio({
+        const downloadParams = {
           url: task.url,
           task: taskWithDuration,
           settings,
           ytdlpPath,
-          ffmpegPath,
           onProgress: ({ status, progress, speed }) => {
             downloadManager.updateTask(task.url, { status, progress, speed }, webContents);
           },
@@ -171,7 +165,14 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
             }
             resolve();
           }
-        });
+        };
+
+        // Route to the correct download function based on format
+        if (isVideo) {
+          downloadVideo({ ...downloadParams, quality: task.quality || '1080' });
+        } else {
+          downloadAudio({ ...downloadParams, ffmpegPath });
+        }
       });
 
     } catch (err) {

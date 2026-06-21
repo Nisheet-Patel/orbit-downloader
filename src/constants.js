@@ -20,6 +20,7 @@ const IPC_CHANNELS = Object.freeze({
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
   FFMPEG_VALIDATE: 'ffmpeg:validate',
+  FFMPEG_RESOLVE: 'ffmpeg:resolve',
   YTDLP_VALIDATE: 'ytdlp:validate',
   YTDLP_ENSURE: 'ytdlp:ensure',
   DIALOG_CHOOSE_DOWNLOAD_FOLDER: 'dialog:chooseDownloadFolder',
@@ -29,6 +30,10 @@ const IPC_CHANNELS = Object.freeze({
   QUEUE_START: 'queue:start',
   QUEUE_GET: 'queue:get',
   FOLDER_OPEN: 'folder:open',
+  METADATA_FETCH: 'metadata:fetch',
+  WINDOW_MINIMIZE: 'window:minimize',
+  WINDOW_MAXIMIZE: 'window:maximize',
+  WINDOW_CLOSE: 'window:close',
   QUEUE_PROGRESS: 'queue:progress',
   QUEUE_TASK_UPDATED: 'queue:taskUpdated'
 });
@@ -45,7 +50,12 @@ function getDefaultSettings() {
     audioQuality: '320',
     maxParallelDownloads: 3,
     ffmpegLocation: '',
-    ytdlpLocation: ''
+    ytdlpLocation: '',
+    theme: 'light',
+    lastFormat: 'video',
+    lastVideoQuality: '1080',
+    lastAudioQuality: '320',
+    cookiesFromBrowser: ''
   });
 }
 

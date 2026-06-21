@@ -8,7 +8,7 @@ class DownloadManager {
     this.tasks = new Map();
   }
 
-  addTask(url) {
+  addTask(url, { format = 'audio', quality = '320' } = {}) {
     if (this.tasks.has(url)) {
       return { added: false, reason: 'duplicate' };
     }
@@ -20,7 +20,9 @@ class DownloadManager {
       speed: '',
       duration: 0,
       errorMessage: '',
-      filePath: ''
+      filePath: '',
+      format,
+      quality
     });
     return { added: true };
   }

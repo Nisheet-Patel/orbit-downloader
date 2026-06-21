@@ -7,14 +7,9 @@ const PLATFORM_BINARY = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
 /**
  * Validate whether a given path points to a working FFmpeg executable.
  * Mirrors the Python `validate_ffmpeg_path` logic.
- *  1. Empty path → invalid.
- *  2. If inputPath is a directory, look for `ffmpeg.exe` / `ffmpeg` inside it.
- *  3. Otherwise treat inputPath as the executable itself.
- *  4. Spawn `<resolved> -version` with a 5-second timeout.
- *  5. Valid only if exits with code 0 before timeout.
  *
  * @param {string} inputPath
- * @returns {Promise<{ valid: boolean, version?: string, reason?: string }>}
+ * @returns {Promise<{ valid: boolean, version?: string, reason?: string, resolvedPath?: string }>}
  */
 async function validateFfmpegPath(inputPath) {
   if (!inputPath || typeof inputPath !== 'string' || inputPath.trim() === '') {
@@ -37,15 +32,10 @@ async function validateFfmpegPath(inputPath) {
         }
       }
     }
-    // Fall through to try the path as-is even if fs.existsSync fails —
-    // the binary might be on the system PATH.
   } catch (_err) {
     return { valid: false, reason: 'Could not inspect path' };
   }
 
-  // ------------------------------------------------------------------
-  // Spawn the binary with a  5-second-timeout
-  // ------------------------------------------------------------------
   return new Promise((resolve) => {
     const child = spawn(resolved, ['-version'], { timeout: 5000 });
     let stdout = '';
@@ -68,9 +58,8 @@ async function validateFfmpegPath(inputPath) {
     child.on('close', (code) => {
       if (timedOut) return;
       if (code === 0) {
-        // Try to grab the first line (version string) from stdout.
         const versionLine = stdout.split('\n')[0] || '';
-        resolve({ valid: true, version: versionLine.trim() || undefined });
+        resolve({ valid: true, version: versionLine.trim() || undefined, resolvedPath: resolved });
       } else {
         resolve({ valid: false, reason: `FFmpeg exited with code ${code}` });
       }
@@ -78,4 +67,40 @@ async function validateFfmpegPath(inputPath) {
   });
 }
 
-module.exports = { validateFfmpegPath };
+/**
+ * Resolves FFmpeg using the priority:
+ * 1. Manual override path
+ * 2. CWD /bin/ffmpeg.exe
+ * 3. CWD /ffmpeg.exe
+ * 4. Repo root /bin/ffmpeg.exe
+ * 5. Repo root /ffmpeg.exe
+ * 6. System PATH
+ *
+ * @param {string} [manualPath]
+ * @returns {Promise<{ ok: boolean, path?: string, error?: string }>}
+ */
+async function resolveFfmpegPath(manualPath) {
+  const candidates = [];
+  if (manualPath && manualPath.trim()) {
+    candidates.push(manualPath.trim());
+  }
+  candidates.push(path.join(process.cwd(), 'bin', PLATFORM_BINARY));
+  candidates.push(path.join(process.cwd(), PLATFORM_BINARY));
+  candidates.push(path.join(__dirname, '..', 'bin', PLATFORM_BINARY));
+  candidates.push(path.join(__dirname, '..', PLATFORM_BINARY));
+  candidates.push(PLATFORM_BINARY);
+
+  for (const candidate of candidates) {
+    const check = await validateFfmpegPath(candidate);
+    if (check.valid) {
+      return { ok: true, path: check.resolvedPath };
+    }
+  }
+
+  return {
+    ok: false,
+    error: 'Could not locate a working FFmpeg executable in Settings, bin folders, current directory, or system PATH.'
+  };
+}
+
+module.exports = { validateFfmpegPath, resolveFfmpegPath };

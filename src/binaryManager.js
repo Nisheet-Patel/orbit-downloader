@@ -91,32 +91,53 @@ async function downloadYtDlp() {
  */
 async function resolveYtDlpPath(manualOverride) {
   try {
-    // 1. Bundled
-    let candidate = getBundledPath();
+    // 1. Manual override
+    if (manualOverride) {
+      let resolvedManual = manualOverride.trim();
+      if (fs.existsSync(resolvedManual)) {
+        const stats = fs.statSync(resolvedManual);
+        if (stats.isDirectory()) {
+          resolvedManual = path.join(resolvedManual, PLATFORM_BINARY);
+        }
+        if (fs.existsSync(resolvedManual)) {
+          return { ok: true, path: resolvedManual, source: 'manual' };
+        }
+      }
+    }
+
+    // 2. CWD bin/yt-dlp
+    let candidate = path.join(process.cwd(), 'bin', PLATFORM_BINARY);
+    if (fs.existsSync(candidate)) {
+      return { ok: true, path: candidate, source: 'current_bin' };
+    }
+
+    // 3. CWD yt-dlp
+    candidate = path.join(process.cwd(), PLATFORM_BINARY);
+    if (fs.existsSync(candidate)) {
+      return { ok: true, path: candidate, source: 'current_dir' };
+    }
+
+    // 4. Bundled
+    candidate = getBundledPath();
     if (candidate) {
       return { ok: true, path: candidate, source: 'bundled' };
     }
 
-    // 2. Previously downloaded
+    // 5. Previously downloaded
     candidate = getDownloadedPath();
     if (candidate) {
       return { ok: true, path: candidate, source: 'downloaded' };
     }
 
-    // 3. Download latest
+    // 6. Download latest
     try {
       const downloaded = await downloadYtDlp();
       return { ok: true, path: downloaded, source: 'downloaded' };
     } catch (downloadErr) {
-      // continue to manual fallback
+      // continue
     }
 
-    // 4. Manual override
-    if (manualOverride && fs.existsSync(manualOverride)) {
-      return { ok: true, path: manualOverride, source: 'manual' };
-    }
-
-    // 5. Fail
+    // 7. Fail
     return {
       ok: false,
       error: `Could not locate or download ${PLATFORM_BINARY}, and no valid manual path was provided.`
