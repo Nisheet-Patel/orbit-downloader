@@ -19,9 +19,53 @@
     <main class="app-main">
       <!-- Downloads Tab -->
       <section id="tab-downloads" class="tab-panel active">
-        <div class="placeholder">
-          <h2>Downloads</h2>
-          <p>Queue and download controls will appear here in a later task.</p>
+        <div class="downloads-content">
+          <!-- URL Input -->
+          <div class="downloads-input">
+            <label class="setting-label" for="url-input">YouTube URLs</label>
+            <textarea
+              id="url-input"
+              class="url-textarea"
+              placeholder="Paste YouTube URLs here, one per line or comma-separated…"
+              rows="4"
+            ></textarea>
+            <div class="downloads-actions">
+              <button id="btn-add-queue" class="btn btn-primary">Add to Queue</button>
+              <button id="btn-start-downloads" class="btn btn-primary">Start Downloads</button>
+              <button id="btn-clear-queue" class="btn btn-secondary">Clear Queue</button>
+              <button id="btn-open-folder" class="btn btn-secondary">Open Downloads Folder</button>
+            </div>
+          </div>
+
+          <!-- Summary Dashboard -->
+          <div id="downloads-summary" class="summary-dashboard">
+            <div class="summary-tile tile-completed">
+              <div class="tile-value" id="stat-completed">0</div>
+              <div class="tile-label">Completed</div>
+            </div>
+            <div class="summary-tile tile-downloading">
+              <div class="tile-value" id="stat-downloading">0</div>
+              <div class="tile-label">Downloading</div>
+            </div>
+            <div class="summary-tile tile-pending">
+              <div class="tile-value" id="stat-pending">0</div>
+              <div class="tile-label">Pending</div>
+            </div>
+            <div class="summary-tile tile-errors">
+              <div class="tile-value" id="stat-errors">0</div>
+              <div class="tile-label">Errors</div>
+            </div>
+          </div>
+
+          <!-- Queue Container -->
+          <div id="queue-container" class="queue-container">
+            <div id="queue-list" class="queue-list"></div>
+            <div id="queue-empty-state" class="queue-empty">
+              <div class="queue-empty-icon">📦</div>
+              <div class="queue-empty-title">Ready to Download!</div>
+              <div class="queue-empty-text">Paste some YouTube URLs above to get started.</div>
+            </div>
+          </div>
         </div>
       </section>
 

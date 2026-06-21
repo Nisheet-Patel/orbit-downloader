@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const { IPC_CHANNELS } = require('./src/constants');
 const { getSettings, saveSettings } = require('./src/settingsStore');
@@ -208,8 +209,20 @@ ipcMain.handle(IPC_CHANNELS.FOLDER_OPEN, async () => {
   const settings = getSettings();
   const { shell } = require('electron');
   const targetPath = settings.downloadLocation || require('electron').app.getPath('downloads');
-  await shell.openPath(targetPath);
-  return { success: true };
+
+  try {
+    // Mirror Python: Path(path).mkdir(parents=True, exist_ok=True)
+    if (!fs.existsSync(targetPath)) {
+      fs.mkdirSync(targetPath, { recursive: true });
+    }
+    const error = await shell.openPath(targetPath);
+    if (error && error !== '') {
+      return { success: false, error: `Could not open folder: ${error}` };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message || 'Failed to open folder' };
+  }
 });
 
 app.whenReady().then(() => {

@@ -1,7 +1,7 @@
 {
   "name": "orbit-yt-dlp-gui",
-  "version": "1.0.0",
-  "description": "Orbit – YouTube Audio Downloader (Electron rebuild)",
+  "version": "0.1.0",
+  "description": "Orbit – YouTube Downloader",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
