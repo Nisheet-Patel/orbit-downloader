@@ -11,7 +11,11 @@ function getBundledPath() {
   let candidate = path.join(resourcesPath, 'bin', PLATFORM_BINARY);
   if (fs.existsSync(candidate)) return candidate;
 
-  // Fallback for development (repo root bin/)
+  // Fallback for development (repo root bin/win/ or bin/)
+  const devSubdir = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux';
+  candidate = path.join(__dirname, '..', 'bin', devSubdir, PLATFORM_BINARY);
+  if (fs.existsSync(candidate)) return candidate;
+
   candidate = path.join(__dirname, '..', 'bin', PLATFORM_BINARY);
   if (fs.existsSync(candidate)) return candidate;
 

@@ -84,8 +84,12 @@ async function resolveFfmpegPath(manualPath) {
   if (manualPath && manualPath.trim()) {
     candidates.push(manualPath.trim());
   }
+  const devSubdir = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux';
+  candidates.push(path.join(process.resourcesPath, 'bin', PLATFORM_BINARY));
+  candidates.push(path.join(process.cwd(), 'bin', devSubdir, PLATFORM_BINARY));
   candidates.push(path.join(process.cwd(), 'bin', PLATFORM_BINARY));
   candidates.push(path.join(process.cwd(), PLATFORM_BINARY));
+  candidates.push(path.join(__dirname, '..', 'bin', devSubdir, PLATFORM_BINARY));
   candidates.push(path.join(__dirname, '..', 'bin', PLATFORM_BINARY));
   candidates.push(path.join(__dirname, '..', PLATFORM_BINARY));
   candidates.push(PLATFORM_BINARY);
