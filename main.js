@@ -7,8 +7,9 @@ const { getSettings, saveSettings } = require('./src/settingsStore');
 const { resolveYtDlpPath } = require('./src/binaryManager');
 const { validateFfmpegPath, resolveFfmpegPath } = require('./src/ffmpegValidator');
 const { DownloadManager } = require('./src/downloadManager');
-const { startDownloads } = require('./src/queueRunner');
+const { startDownloads, Semaphore } = require('./src/queueRunner');
 const { getMetadata } = require('./src/ytdlpRunner');
+const metadataSemaphore = new Semaphore(3);
 const { validateYoutubeUrl } = require('./src/utils');
 
 // Keep a global reference to avoid garbage collection
@@ -30,7 +31,12 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile('index.html');
+  const isDev = process.env.NODE_ENV === 'development';
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:3000');
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'renderer', 'dist', 'index.html'));
+  }
 
   // Dev tools for development — remove or gate in production builds later
   // mainWindow.webContents.openDevTools();
@@ -147,44 +153,53 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, payload) => {
   const duplicates = [];
   const invalid = [];
 
-  for (const url of urls) {
+  const reversedUrls = [...urls].reverse();
+  for (const url of reversedUrls) {
     if (!validateYoutubeUrl(url)) {
-      invalid.push(url);
+      invalid.unshift(url);
       continue;
     }
     const result = downloadManager.addTask(url, { format, quality });
     if (result.added) {
-      added.push(url);
+      added.unshift({ url, id: result.id });
     } else {
-      duplicates.push(url);
+      duplicates.unshift(url);
     }
   }
 
-  // Async metadata fetch for newly added tasks (non-blocking)
+  // Async metadata fetch for newly added tasks (non-blocking, throttled to prevent freeze)
   const webContents = getMainWebContents();
-  for (const url of added) {
+  for (const item of added) {
     (async () => {
-      const settings = getSettings();
-      const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
-      if (!ytDlpResult.ok) return;
+      await metadataSemaphore.acquire();
       try {
-        const meta = await getMetadata(url, ytDlpResult.path, settings.cookiesFromBrowser);
-        downloadManager.updateTask(url, {
+        const settings = getSettings();
+        const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
+        if (!ytDlpResult.ok) return;
+        const meta = await getMetadata(item.url, ytDlpResult.path, settings.cookiesFromBrowser);
+        downloadManager.updateTask(item.id, {
           title: meta.title,
           duration: meta.duration,
           thumbnailUrl: meta.thumbnailUrl
         }, webContents);
       } catch (_err) {
         // Metadata failures are non-fatal; task stays in queue for retry on start
+      } finally {
+        metadataSemaphore.release();
       }
     })();
   }
 
-  return { added, duplicates, invalid };
+  return {
+    added: added.map(item => item.url),
+    duplicates,
+    invalid
+  };
 });
 
-ipcMain.handle(IPC_CHANNELS.QUEUE_REMOVE, (_event, { url }) => {
-  downloadManager.removeTask(url);
+ipcMain.handle(IPC_CHANNELS.QUEUE_REMOVE, (_event, { id, url }) => {
+  const targetId = id || url;
+  downloadManager.removeTask(targetId);
   return { success: true };
 });
 

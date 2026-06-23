@@ -90,13 +90,17 @@ function formatSpeed(bytesPerSec) {
  * @returns {{kill: Function}} returns a kill function for cancellation
  */
 function downloadAudio({ url, task, settings, ytdlpPath, ffmpegPath, onProgress, onError, onClose }) {
+  const quality = (task && task.quality) || settings.audioQuality || '320';
+  const suffix = ` [${quality}kbps]`;
+  const outputTemplate = path.join(settings.downloadLocation, `%(title)s${suffix}.%(ext)s`);
+
   const args = [
     '-f', 'bestaudio/best',
     '--extract-audio',
     '--audio-format', 'mp3',
-    '--audio-quality', (task && task.quality) || settings.audioQuality || '320',
+    '--audio-quality', quality,
     '--ffmpeg-location', ffmpegPath || 'ffmpeg',
-    '-o', path.join(settings.downloadLocation, '%(title)s.%(ext)s'),
+    '-o', outputTemplate,
     '--newline',
     '-v', // verbose for progress lines
   ];
@@ -193,15 +197,27 @@ function downloadAudio({ url, task, settings, ytdlpPath, ffmpegPath, onProgress,
  * @param {Function} params.onClose
  * @returns {{kill: Function}}
  */
-function downloadVideo({ url, task, settings, ytdlpPath, quality, onProgress, onError, onClose }) {
+function downloadVideo({ url, task, settings, ytdlpPath, quality, ffmpegPath, onProgress, onError, onClose }) {
   const height = parseInt(quality, 10) || 1080;
   const formatFilter = `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]`;
+
+  const qualMap = {
+    '2160': '4K',
+    '1440': '2K',
+    '1080': '1080p',
+    '720': '720p',
+    '480': '480p',
+    '360': '360p'
+  };
+  const label = qualMap[quality] || `${quality}p`;
+  const suffix = ` [${label}]`;
+  const outputTemplate = path.join(settings.downloadLocation, `%(title)s${suffix}.%(ext)s`);
 
   const args = [
     '-f', formatFilter,
     '--merge-output-format', 'mp4',
-    '--ffmpeg-location', settings.ffmpegLocation || 'ffmpeg',
-    '-o', path.join(settings.downloadLocation, '%(title)s.%(ext)s'),
+    '--ffmpeg-location', ffmpegPath || 'ffmpeg',
+    '-o', outputTemplate,
     '--newline',
     '-v',
   ];

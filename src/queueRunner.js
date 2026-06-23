@@ -65,7 +65,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
   if (!ytDlpResult.ok) {
     // Mark all tasks as error
     for (const task of tasks) {
-      downloadManager.updateTask(task.url, {
+      downloadManager.updateTask(task.id || task.url, {
         status: STATUS.ERROR,
         errorMessage: `yt-dlp not available: ${ytDlpResult.error}`
       }, webContents);
@@ -88,7 +88,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
 
     try {
       // extracting_info
-      downloadManager.updateTask(task.url, {
+      downloadManager.updateTask(task.id || task.url, {
         status: STATUS.EXTRACTING_INFO,
         progress: 0
       }, webContents);
@@ -97,7 +97,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       try {
         metadata = await getMetadata(task.url, ytdlpPath);
       } catch (err) {
-        downloadManager.updateTask(task.url, {
+        downloadManager.updateTask(task.id || task.url, {
           status: STATUS.ERROR,
           errorMessage: `Metadata extraction failed: ${err.message}`,
           progress: 0
@@ -106,7 +106,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       }
 
       // Update task with metadata
-      downloadManager.updateTask(task.url, {
+      downloadManager.updateTask(task.id || task.url, {
         title: metadata.title,
         duration: metadata.duration
       }, webContents);
@@ -115,7 +115,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       const isVideo = task.format === 'video';
       const expectedPath = buildExpectedPath(metadata.title, settings.downloadLocation, isVideo ? 'video' : 'audio');
       if (fs.existsSync(expectedPath)) {
-        downloadManager.updateTask(task.url, {
+        downloadManager.updateTask(task.id || task.url, {
           status: STATUS.ALREADY_EXISTS,
           progress: 100,
           filePath: expectedPath
@@ -124,7 +124,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       }
 
       // Start downloading
-      downloadManager.updateTask(task.url, {
+      downloadManager.updateTask(task.id || task.url, {
         status: STATUS.DOWNLOADING,
         progress: 0
       }, webContents);
@@ -140,24 +140,25 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
           settings,
           ytdlpPath,
           onProgress: ({ status, progress, speed }) => {
-            downloadManager.updateTask(task.url, { status, progress, speed }, webContents);
+            downloadManager.updateTask(task.id || task.url, { status, progress, speed }, webContents);
           },
           onError: (msg) => {
-            downloadManager.updateTask(task.url, {
+            downloadManager.updateTask(task.id || task.url, {
               status: STATUS.ERROR,
               errorMessage: msg,
               progress: 0
             }, webContents);
           },
           onClose: (success, errorMessage) => {
+            downloadManager.activeDownloads.delete(task.id || task.url);
             if (success) {
-              downloadManager.updateTask(task.url, {
+              downloadManager.updateTask(task.id || task.url, {
                 status: STATUS.COMPLETED,
                 progress: 100,
                 filePath: expectedPath
               }, webContents);
             } else {
-              downloadManager.updateTask(task.url, {
+              downloadManager.updateTask(task.id || task.url, {
                 status: STATUS.ERROR,
                 errorMessage: errorMessage || 'Download failed',
                 progress: 0
@@ -168,15 +169,17 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
         };
 
         // Route to the correct download function based on format
+        let handle;
         if (isVideo) {
-          downloadVideo({ ...downloadParams, quality: task.quality || '1080' });
+          handle = downloadVideo({ ...downloadParams, quality: task.quality || '1080', ffmpegPath });
         } else {
-          downloadAudio({ ...downloadParams, ffmpegPath });
+          handle = downloadAudio({ ...downloadParams, ffmpegPath });
         }
+        downloadManager.activeDownloads.set(task.id || task.url, handle);
       });
 
     } catch (err) {
-      downloadManager.updateTask(task.url, {
+      downloadManager.updateTask(task.id || task.url, {
         status: STATUS.ERROR,
         errorMessage: err.message || 'Unexpected error during download',
         progress: 0

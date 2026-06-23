@@ -1,14 +1,19 @@
 {
   "name": "orbit-yt-dlp-gui",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Orbit – YouTube Downloader",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:renderer": "cd renderer && npm run dev",
+    "dev:electron": "wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .",
+    "build": "npm run build:renderer && node scripts/verify-build.js",
+    "build:renderer": "cd renderer && npm run build",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac"
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac"
   },
   "keywords": [],
   "author": "",
@@ -17,8 +22,11 @@
     "electron-store": "^8.0.0"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
     "electron": "^34.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "wait-on": "^9.0.10"
   },
   "build": {
     "appId": "com.orbit.ytdownloader",
@@ -31,9 +39,19 @@
       "bin/**/*"
     ],
     "files": [
-      "**/*",
-      "!bin/win/*",
-      "!dist/*"
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "renderer/dist/**/*",
+      "orbit-logo.svg",
+      "orbit-logo.ico",
+      "licenses/**/*",
+      "!bin/win/**/*",
+      "!renderer/node_modules/**/*",
+      "!renderer/src/**/*",
+      "!renderer/**/*.config.*",
+      "!renderer/*.json",
+      "!dist/**/*"
     ],
     "extraResources": [
       {

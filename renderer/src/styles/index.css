@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #F5F5F7;
+  --color-surface-elevated: #ffffff;
+  --color-border: #E5E5EA;
+  --color-border-subtle: #F0F0F5;
+  --color-text-primary: #1A1A1E;
+  --color-text-secondary: #6E6E80;
+  --color-text-disabled: #AEAEB8;
+  --color-accent-red: #E8002A;
+  --color-accent-red-light: #FFF0F3;
+  --color-accent-red-hover: #C5001F;
+  --color-accent-purple: #6B3DEA;
+  --color-accent-purple-light: #F3F0FF;
+  --color-accent-purple-hover: #5530C9;
+  --color-success: #30B67A;
+  --color-success-light: #EEFAF5;
+  --color-warning: #F5A623;
+  --color-error: #E8002A;
+  --color-shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+  --color-shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --color-shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+.dark {
+  --color-bg: #0F0F12;
+  --color-surface: #1C1C20;
+  --color-surface-elevated: #26262C;
+  --color-border: #3A3A44;
+  --color-border-subtle: #2C2C34;
+  --color-text-primary: #F2F2F7;
+  --color-text-secondary: #98989F;
+  --color-text-disabled: #56565E;
+  --color-accent-red: #FF3356;
+  --color-accent-red-light: rgba(232,0,42,0.12);
+  --color-accent-purple: #8B6CF0;
+  --color-accent-purple-light: rgba(107,61,234,0.15);
+  --color-success: #3ECF8E;
+  --color-success-light: rgba(48,182,122,0.12);
+  --color-shadow-sm: 0 1px 4px rgba(0,0,0,0.25);
+  --color-shadow-md: 0 4px 16px rgba(0,0,0,0.35);
+  --color-shadow-lg: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin:0; padding:0; width:100%; height:100%; font-family:'Inter','SF Pro Display','Segoe UI Variable',system-ui,-apple-system,sans-serif; background:var(--color-bg); color:var(--color-text-primary); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:999px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.25); }
+.dark ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); }
+.dark ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.25); }

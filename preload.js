@@ -7,7 +7,7 @@ try {
   try {
     const settings = ipcRenderer.sendSync('settings:getSync');
     if (settings && settings.theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.classList.add('dark');
     }
   } catch (err) {
     console.error('[preload] theme check failed:', err);
@@ -51,12 +51,14 @@ try {
 
     // Queue
     queueAdd: (urls, options) => {
-      if (options && (options.format || options.quality)) {
-        return ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, { urls, ...options });
-      }
-      return ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, urls);
+      const opts = options || {};
+      return ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, {
+        urls,
+        format: opts.format || 'audio',
+        quality: opts.quality || '320'
+      });
     },
-    queueRemove: (url) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_REMOVE, { url }),
+    queueRemove: (idOrUrl) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_REMOVE, { id: idOrUrl, url: idOrUrl }),
     queueClear: () => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_CLEAR),
     queueGet: () => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_GET),
     queueStart: () => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_START),
@@ -71,13 +73,19 @@ try {
     // Push event registration
     onQueueProgress: (callback) => {
       const channel = IPC_CHANNELS.QUEUE_PROGRESS;
-      ipcRenderer.removeAllListeners(channel);
-      ipcRenderer.on(channel, (_event, data) => callback(data));
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on(channel, handler);
+      return () => {
+        ipcRenderer.removeListener(channel, handler);
+      };
     },
     onQueueTaskUpdated: (callback) => {
       const channel = IPC_CHANNELS.QUEUE_TASK_UPDATED;
-      ipcRenderer.removeAllListeners(channel);
-      ipcRenderer.on(channel, (_event, data) => callback(data));
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on(channel, handler);
+      return () => {
+        ipcRenderer.removeListener(channel, handler);
+      };
     }
   };
 
