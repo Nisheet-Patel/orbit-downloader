@@ -3,9 +3,11 @@ import { Button } from '@/components/ui/Button';
 import { useToastStore } from '@/stores/toastStore';
 import { useQueue } from '@/hooks/useQueue';
 import { useDownloadStore } from '@/stores/downloadStore';
+import { useAppStore } from '@/stores/appStore';
 import { shallow } from 'zustand/shallow';
 import { validateYoutubeUrl } from '@/utils/validators';
 import { QueueItem } from '@/components/ui/QueueItem';
+import { PlaylistQueueItem } from '@/components/ui/PlaylistQueueItem';
 
 type Format = 'video' | 'audio';
 
@@ -26,11 +28,15 @@ const audioQualities = [
 ];
 
 export function BulkDownload() {
-  const [text, setText] = useState('');
+  const text = useAppStore((s) => s.bulkText);
+  const setText = useAppStore((s) => s.setBulkText);
   const [format, setFormat] = useState<Format>('video');
   const [quality, setQuality] = useState('1080');
   const addToast = useToastStore((s) => s.addToast);
   const tasks = useDownloadStore((s) => Object.values(s.tasks), shallow);
+  const topLevelTasks = useMemo(() => {
+    return tasks.filter((t) => !t.playlistId);
+  }, [tasks]);
   const { addToQueue, startQueue, removeFromQueue, clearQueue } = useQueue();
 
   const handleAdd = useCallback(async () => {
@@ -44,10 +50,8 @@ export function BulkDownload() {
     const res = await addToQueue(urls, { format, quality });
     if (res.added.length > 0) {
       addToast('success', `Added ${res.added.length} item(s) to queue`);
-      setText((_prev) => {
-        const remaining = lines.filter((l) => !urls.includes(l));
-        return remaining.join('\n');
-      });
+      const remaining = lines.filter((l) => !urls.includes(l));
+      setText(remaining.join('\n'));
     }
     if (res.duplicates.length > 0) {
       addToast('warning', `${res.duplicates.length} duplicate(s) skipped`);
@@ -102,17 +106,15 @@ export function BulkDownload() {
     const handleDropped = (e: Event) => {
       const urls = (e as CustomEvent).detail?.urls;
       if (urls && urls.length > 0) {
-        setText((prev) => {
-          const currentLines = prev.split('\n').map(l => l.trim()).filter(Boolean);
-          const newLines = [...currentLines, ...urls];
-          return newLines.join('\n');
-        });
+        const currentLines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
+        const newLines = [...currentLines, ...urls];
+        setText(newLines.join('\n'));
         addToast('success', `Added ${urls.length} dropped URL(s) to text area`);
       }
     };
     window.addEventListener('orbit:url-dropped', handleDropped);
     return () => window.removeEventListener('orbit:url-dropped', handleDropped);
-  }, [addToast]);
+  }, [addToast, text, setText]);
 
   const qualities = useMemo(() => (format === 'video' ? videoQualities : audioQualities), [format]);
 
@@ -177,10 +179,10 @@ export function BulkDownload() {
         {/* Right Column - Queue Viewport */}
         <div className="flex flex-col h-full border-l border-[var(--color-border)] pl-0 md:pl-8 min-h-0">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Queue ({tasks.length})</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Queue ({topLevelTasks.length})</h2>
             <button
               onClick={handleClear}
-              disabled={tasks.length === 0}
+              disabled={topLevelTasks.length === 0}
               className="text-xs font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-accent-purple)] disabled:text-[var(--color-text-disabled)] transition-colors bg-transparent border-0 cursor-pointer"
             >
               Clear All
@@ -188,26 +190,38 @@ export function BulkDownload() {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-2 min-h-0">
-            {tasks.length === 0 ? (
+            {topLevelTasks.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-[var(--color-text-secondary)] border border-dashed border-[var(--color-border)] rounded-xl">
                 <span className="material-icons text-3xl mb-1 text-[var(--color-text-disabled)]">playlist_add</span>
                 <span className="text-sm font-medium">Your queue is empty</span>
                 <span className="text-xs text-[var(--color-text-disabled)]">Add videos to start.</span>
               </div>
             ) : (
-              tasks.map((task) => (
-                <QueueItem
-                  key={task.id || task.url}
-                  task={task}
-                  onRemove={handleRemove}
-                />
-              ))
+              topLevelTasks.map((task) => {
+                if (task.isPlaylist) {
+                  return (
+                    <PlaylistQueueItem
+                      key={task.id || task.url}
+                      task={task}
+                      allTasks={tasks}
+                      onRemove={handleRemove}
+                    />
+                  );
+                }
+                return (
+                  <QueueItem
+                    key={task.id || task.url}
+                    task={task}
+                    onRemove={handleRemove}
+                  />
+                );
+              })
             )}
           </div>
 
           <button
             onClick={handleStart}
-            disabled={tasks.length === 0}
+            disabled={topLevelTasks.length === 0}
             className="w-full h-11 mt-4 text-sm font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all border-0 cursor-pointer
               bg-[var(--color-accent-purple)] hover:bg-[var(--color-accent-purple-hover)] text-white disabled:bg-[var(--color-border)] disabled:text-[var(--color-text-disabled)]"
           >

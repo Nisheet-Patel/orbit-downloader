@@ -1,6 +1,6 @@
 # Orbit – YT Downloader
 
-Orbit is a modern, premium desktop YouTube video and audio downloader built with Electron and HTML5/CSS3. It offers a dual-mode interface (Single vs. Bulk Download), interactive queue controls, real-time download speed trackers, and dynamic light/dark theme persistence.
+Orbit is a modern, premium desktop YouTube video, Audio, Playlist downloader built with Electron and HTML5/CSS3. It offers a dual-mode interface (Single vs. Bulk Download), interactive queue controls, real-time download speed trackers, and dynamic light/dark theme persistence.
 
 It uses **yt-dlp** for metadata extraction and media fetching, and **FFmpeg** for high-quality audio extraction and video/audio merging.
 

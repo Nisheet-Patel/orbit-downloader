@@ -31,6 +31,8 @@ class IPCService {
     this.orbit.onQueueProgress(callback);
   onQueueTaskUpdated = (callback: (data: Partial<Task> & { id?: string; url: string }) => void): (() => void) =>
     this.orbit.onQueueTaskUpdated(callback);
+  onQueueReloadNeeded = (callback: () => void): (() => void) =>
+    this.orbit.onQueueReloadNeeded(callback);
 }
 
 export const ipcService = new IPCService();

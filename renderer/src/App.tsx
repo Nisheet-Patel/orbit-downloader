@@ -58,11 +58,11 @@ export function App() {
       }
     };
 
-    window.addEventListener('dragover', handleDragOver);
-    window.addEventListener('drop', handleDrop);
+    window.addEventListener('dragover', handleDragOver, true);
+    window.addEventListener('drop', handleDrop, true);
     return () => {
-      window.removeEventListener('dragover', handleDragOver);
-      window.removeEventListener('drop', handleDrop);
+      window.removeEventListener('dragover', handleDragOver, true);
+      window.removeEventListener('drop', handleDrop, true);
     };
   }, []);
 
@@ -84,9 +84,17 @@ export function App() {
       useDownloadStore.getState().updateTask(key, data as Task);
     });
 
+    const removeReload = ipcService.onQueueReloadNeeded(async () => {
+      try {
+        const tasks = await ipcService.queueGet();
+        useDownloadStore.getState().setAllTasks(tasks);
+      } catch (_) {}
+    });
+
     return () => {
       removeProgress();
       removeTaskUpdate();
+      removeReload();
     };
   }, []);
 

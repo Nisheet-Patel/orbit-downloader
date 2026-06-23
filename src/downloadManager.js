@@ -9,10 +9,14 @@ class DownloadManager {
     this.activeDownloads = new Map();
   }
 
-  addTask(url, { format = 'audio', quality = '320' } = {}) {
+  addTask(url, { format = 'audio', quality = '320', playlistId = null } = {}) {
     const key = `${url}#${format}#${quality}`;
     if (this.tasks.has(key)) {
-      return { added: false, reason: 'duplicate' };
+      const existing = this.tasks.get(key);
+      if (playlistId && !existing.playlistId) {
+        existing.playlistId = playlistId;
+      }
+      return { added: false, reason: 'duplicate', id: key };
     }
     const newTask = {
       id: key,
@@ -25,7 +29,8 @@ class DownloadManager {
       errorMessage: '',
       filePath: '',
       format,
-      quality
+      quality,
+      playlistId
     };
     // Prepend new task to insert at the top of the queue
     const newTasks = new Map();
@@ -37,8 +42,44 @@ class DownloadManager {
     return { added: true, id: key };
   }
 
+  addPlaylist(key, playlistUrl, title, format, quality) {
+    const newTask = {
+      id: key,
+      url: playlistUrl,
+      title: title || 'Loading playlist...',
+      status: STATUS.PENDING,
+      progress: 0,
+      speed: '0/0 downloaded',
+      isPlaylist: true,
+      videoIds: [],
+      format,
+      quality
+    };
+    const newTasks = new Map();
+    newTasks.set(key, newTask);
+    for (const [k, v] of this.tasks.entries()) {
+      newTasks.set(k, v);
+    }
+    this.tasks = newTasks;
+    return newTask;
+  }
+
   removeTask(key) {
     if (this.tasks.has(key)) {
+      const task = this.tasks.get(key);
+      if (task.isPlaylist && Array.isArray(task.videoIds)) {
+        for (const childKey of task.videoIds) {
+          const controller = this.activeDownloads.get(childKey);
+          if (controller && typeof controller.kill === 'function') {
+            try {
+              controller.kill();
+            } catch (_) {}
+          }
+          this.activeDownloads.delete(childKey);
+          this.tasks.delete(childKey);
+        }
+      }
+
       const controller = this.activeDownloads.get(key);
       if (controller && typeof controller.kill === 'function') {
         try {
@@ -110,6 +151,55 @@ class DownloadManager {
 
     Object.assign(task, updates);
 
+    // If this task belongs to a playlist, recalculate parent playlist progress & status
+    if (task.playlistId && this.tasks.has(task.playlistId)) {
+      const parent = this.tasks.get(task.playlistId);
+      const children = Array.from(this.tasks.values()).filter(t => t.playlistId === task.playlistId);
+      
+      const total = children.length;
+      if (total > 0) {
+        const completed = children.filter(t => t.status === STATUS.COMPLETED || t.status === STATUS.ALREADY_EXISTS).length;
+        const failed = children.filter(t => t.status === STATUS.ERROR).length;
+        const downloading = children.filter(t => t.status === STATUS.DOWNLOADING || t.status === STATUS.CONVERTING || t.status === STATUS.EXTRACTING_INFO).length;
+        
+        let newStatus = STATUS.PENDING;
+        if (completed === total) {
+          newStatus = STATUS.COMPLETED;
+        } else if (downloading > 0) {
+          newStatus = STATUS.DOWNLOADING;
+        } else if (completed + failed === total) {
+          newStatus = STATUS.ERROR;
+        } else if (completed > 0 || failed > 0) {
+          newStatus = STATUS.DOWNLOADING;
+        }
+
+        const sumProgress = children.reduce((sum, c) => sum + (c.progress || 0), 0);
+        const avgProgress = sumProgress / total;
+
+        parent.progress = avgProgress;
+        parent.status = newStatus;
+        parent.speed = `${completed}/${total} downloaded`;
+
+        if (webContents && !webContents.isDestroyed()) {
+          webContents.send('queue:taskUpdated', {
+            id: parent.id,
+            url: parent.url,
+            title: parent.title,
+            duration: parent.duration,
+            status: parent.status,
+            errorMessage: parent.errorMessage,
+            filePath: parent.filePath,
+            format: parent.format,
+            quality: parent.quality,
+            isPlaylist: true,
+            videoIds: parent.videoIds,
+            progress: parent.progress,
+            speed: parent.speed
+          });
+        }
+      }
+    }
+
     // Push events to renderer if available
     if (webContents && !webContents.isDestroyed()) {
       // Always emit queue:taskUpdated for any status/title/etc change
@@ -122,7 +212,8 @@ class DownloadManager {
         errorMessage: task.errorMessage,
         filePath: task.filePath,
         format: task.format,
-        quality: task.quality
+        quality: task.quality,
+        playlistId: task.playlistId
       });
 
       // Emit queue:progress during active downloading

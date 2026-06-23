@@ -86,6 +86,14 @@ try {
       return () => {
         ipcRenderer.removeListener(channel, handler);
       };
+    },
+    onQueueReloadNeeded: (callback) => {
+      const channel = 'queue:reloadNeeded';
+      const handler = () => callback();
+      ipcRenderer.on(channel, handler);
+      return () => {
+        ipcRenderer.removeListener(channel, handler);
+      };
     }
   };
 

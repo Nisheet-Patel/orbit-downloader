@@ -288,6 +288,44 @@ function downloadVideo({ url, task, settings, ytdlpPath, quality, ffmpegPath, on
   };
 }
 
+function getPlaylistInfo(url, ytdlpPath, cookiesFromBrowser) {
+  return new Promise((resolve, reject) => {
+    const args = ['--flat-playlist', '--dump-single-json', '--no-warnings'];
+    if (cookiesFromBrowser) {
+      args.push('--cookies-from-browser', cookiesFromBrowser);
+    }
+    args.push(url);
+    const child = spawn(ytdlpPath, args, { timeout: 45000 });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (err) => {
+      reject(new Error(`Failed to spawn yt-dlp: ${err.message}`));
+    });
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`yt-dlp failed (exit ${code}): ${stderr || 'Unknown error'}`));
+        return;
+      }
+      try {
+        const info = JSON.parse(stdout);
+        resolve(info);
+      } catch (err) {
+        reject(new Error(`Failed to parse playlist JSON: ${err.message}`));
+      }
+    });
+  });
+}
+
 /**
  * Build the expected output MP3 path for a video title.
  * @param {string} title
@@ -302,6 +340,7 @@ function buildExpectedPath(title, downloadLocation, format = 'audio') {
 
 module.exports = {
   getMetadata,
+  getPlaylistInfo,
   downloadAudio,
   downloadVideo,
   buildExpectedPath,

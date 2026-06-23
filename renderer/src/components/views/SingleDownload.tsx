@@ -7,6 +7,7 @@ import { useToastStore } from '@/stores/toastStore';
 import { useDownloadStore } from '@/stores/downloadStore';
 import { validateYoutubeUrl } from '@/utils/validators';
 import { useQueue } from '@/hooks/useQueue';
+import { useAppStore } from '@/stores/appStore';
 
 type Format = 'video' | 'audio';
 
@@ -34,9 +35,25 @@ export function SingleDownload() {
   const [meta, setMeta] = useState<{ title: string; thumbnailUrl: string; duration: number; channel: string; viewCount: number } | null>(null);
   const [downloading, setDownloading] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { detectedUrl, showChip, dismissChip } = useClipboard();
+  const setMode = useAppStore((s) => s.setMode);
+  const setBulkText = useAppStore((s) => s.setBulkText);
   const addToast = useToastStore((s) => s.addToast);
   const { addToQueue, startQueue } = useQueue();
+  const { detectedUrl, showChip, dismissChip } = useClipboard();
+
+  const checkAndRedirectPlaylist = useCallback((targetUrl: string): boolean => {
+    const trimmed = targetUrl.trim();
+    if (trimmed.includes('list=')) {
+      setBulkText(trimmed);
+      setMode('bulk');
+      addToast('info', 'Playlist detected. Managing download in Bulk Downloads.');
+      setUrl('');
+      setPreviewState('empty');
+      setMeta(null);
+      return true;
+    }
+    return false;
+  }, [setBulkText, setMode, addToast]);
   const task = useDownloadStore(useCallback((s) => {
     if (!url) return undefined;
     const key = `${url.trim()}#${format}#${quality}`;
@@ -74,15 +91,17 @@ export function SingleDownload() {
     const handleDropped = (e: Event) => {
       const urls = (e as CustomEvent).detail?.urls;
       if (urls && urls.length > 0) {
+        if (checkAndRedirectPlaylist(urls[0])) return;
         setUrl(urls[0]);
         fetchMeta(urls[0]);
       }
     };
     window.addEventListener('orbit:url-dropped', handleDropped);
     return () => window.removeEventListener('orbit:url-dropped', handleDropped);
-  }, [fetchMeta]);
+  }, [fetchMeta, checkAndRedirectPlaylist]);
 
   const handleUrlChange = (value: string) => {
+    if (checkAndRedirectPlaylist(value)) return;
     setUrl(value);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     if (!value.trim()) {
@@ -96,6 +115,7 @@ export function SingleDownload() {
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
+        if (checkAndRedirectPlaylist(text)) return;
         setUrl(text.trim());
         await fetchMeta(text.trim());
       }
@@ -201,6 +221,10 @@ export function SingleDownload() {
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => {
+                  if (checkAndRedirectPlaylist(detectedUrl)) {
+                    dismissChip();
+                    return;
+                  }
                   setUrl(detectedUrl);
                   fetchMeta(detectedUrl);
                   dismissChip();

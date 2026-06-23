@@ -2,13 +2,13 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-const { IPC_CHANNELS } = require('./src/constants');
+const { IPC_CHANNELS, STATUS } = require('./src/constants');
 const { getSettings, saveSettings } = require('./src/settingsStore');
 const { resolveYtDlpPath } = require('./src/binaryManager');
 const { validateFfmpegPath, resolveFfmpegPath } = require('./src/ffmpegValidator');
 const { DownloadManager } = require('./src/downloadManager');
 const { startDownloads, Semaphore } = require('./src/queueRunner');
-const { getMetadata } = require('./src/ytdlpRunner');
+const { getMetadata, getPlaylistInfo } = require('./src/ytdlpRunner');
 const metadataSemaphore = new Semaphore(3);
 const { validateYoutubeUrl } = require('./src/utils');
 
@@ -140,7 +140,7 @@ function getMainWebContents() {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
 }
 
-ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, payload) => {
+ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
   const urls = Array.isArray(payload) ? payload : (payload.urls || []);
   const format = Array.isArray(payload) ? 'audio' : (payload.format || 'audio');
   const quality = Array.isArray(payload) ? '320' : (payload.quality || '320');
@@ -154,26 +154,85 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, payload) => {
   const invalid = [];
 
   const reversedUrls = [...urls].reverse();
+  const settings = getSettings();
+  const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
+  const ytdlpPath = ytDlpResult.ok ? ytDlpResult.path : 'yt-dlp';
+  const webContents = getMainWebContents();
+
   for (const url of reversedUrls) {
     if (!validateYoutubeUrl(url)) {
       invalid.unshift(url);
       continue;
     }
-    const result = downloadManager.addTask(url, { format, quality });
-    if (result.added) {
-      added.unshift({ url, id: result.id });
+
+    if (url.includes('list=')) {
+      const playlistKey = `playlist#${url}#${format}#${quality}`;
+      
+      if (downloadManager.tasks.has(playlistKey)) {
+        duplicates.unshift(url);
+        continue;
+      }
+
+      const playlistContainer = downloadManager.addPlaylist(playlistKey, url, 'Loading playlist...', format, quality);
+      added.unshift({ url, id: playlistKey, isPlaylist: true });
+
+      // Run playlist metadata fetch asynchronously to prevent blocking the IPC return
+      (async () => {
+        try {
+          const info = await getPlaylistInfo(url, ytdlpPath, settings.cookiesFromBrowser);
+          const title = info.title || 'Playlist';
+          const entries = info.entries || [];
+
+          const videoIds = [];
+          // Prepend children to task queue in reverse order
+          for (const entry of [...entries].reverse()) {
+            const videoUrl = entry.url || `https://www.youtube.com/watch?v=${entry.id}`;
+            const result = downloadManager.addTask(videoUrl, { format, quality, playlistId: playlistKey });
+            if (result.id) {
+              videoIds.unshift(result.id);
+              // Set title and metadata immediately
+              downloadManager.updateTask(result.id, {
+                title: entry.title || 'Loading...',
+                duration: entry.duration || 0
+              }, webContents);
+            }
+          }
+
+          downloadManager.updateTask(playlistKey, {
+            title,
+            videoIds
+          }, webContents);
+
+          // Force a state reload in the renderer to pick up the newly loaded playlist entries
+          if (webContents && !webContents.isDestroyed()) {
+            webContents.send('queue:reloadNeeded');
+          }
+        } catch (err) {
+          console.error('Failed to load playlist:', err);
+          downloadManager.updateTask(playlistKey, {
+            title: 'Failed to load playlist',
+            status: STATUS.ERROR,
+            errorMessage: err.message
+          }, webContents);
+        }
+      })();
     } else {
-      duplicates.unshift(url);
+      // Normal video URL
+      const result = downloadManager.addTask(url, { format, quality });
+      if (result.added) {
+        added.unshift({ url, id: result.id });
+      } else {
+        duplicates.unshift(url);
+      }
     }
   }
 
-  // Async metadata fetch for newly added tasks (non-blocking, throttled to prevent freeze)
-  const webContents = getMainWebContents();
+  // Trigger metadata fetch for normal videos
   for (const item of added) {
+    if (item.isPlaylist) continue;
     (async () => {
       await metadataSemaphore.acquire();
       try {
-        const settings = getSettings();
         const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
         if (!ytDlpResult.ok) return;
         const meta = await getMetadata(item.url, ytDlpResult.path, settings.cookiesFromBrowser);
@@ -183,7 +242,7 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, (_event, payload) => {
           thumbnailUrl: meta.thumbnailUrl
         }, webContents);
       } catch (_err) {
-        // Metadata failures are non-fatal; task stays in queue for retry on start
+        // ignore
       } finally {
         metadataSemaphore.release();
       }
@@ -217,7 +276,7 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_START, async () => {
   const settings = getSettings();
 
   const pendingTasks = downloadManager.getAll().filter(
-    t => t.status === 'pending' || t.status === 'error'
+    t => (t.status === 'pending' || t.status === 'error') && !t.isPlaylist
   );
 
   if (pendingTasks.length === 0) {

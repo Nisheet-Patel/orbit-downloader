@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const { STATUS } = require('./constants');
 const { getMetadata, downloadAudio, downloadVideo, buildExpectedPath } = require('./ytdlpRunner');
 const { validateFfmpegPath, resolveFfmpegPath } = require('./ffmpegValidator');
@@ -87,6 +88,10 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
     await semaphore.acquire();
 
     try {
+      if (!downloadManager.tasks.has(task.id || task.url)) {
+        return;
+      }
+
       // extracting_info
       downloadManager.updateTask(task.id || task.url, {
         status: STATUS.EXTRACTING_INFO,
@@ -94,14 +99,59 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       }, webContents);
 
       let metadata;
+      let metadataProcess = null;
       try {
-        metadata = await getMetadata(task.url, ytdlpPath);
+        const getMetadataPromise = new Promise((resolve, reject) => {
+          const args = ['--dump-single-json', '--no-warnings', '--skip-download'];
+          if (settings.cookiesFromBrowser) {
+            args.push('--cookies-from-browser', settings.cookiesFromBrowser);
+          }
+          args.push(task.url);
+          const child = spawn(ytdlpPath, args, { timeout: 30000 });
+          metadataProcess = child;
+          
+          let stdout = '';
+          let stderr = '';
+          child.stdout.on('data', (d) => { stdout += d.toString(); });
+          child.stderr.on('data', (d) => { stderr += d.toString(); });
+          child.on('error', (err) => reject(err));
+          child.on('close', (code) => {
+            if (code !== 0) {
+              reject(new Error(stderr || stdout || 'Unknown error'));
+            } else {
+              try {
+                const info = JSON.parse(stdout);
+                resolve({
+                  title: info.title || 'Unknown Title',
+                  duration: info.duration || 0,
+                  uploader: info.uploader || 'Unknown',
+                  viewCount: info.view_count || 0,
+                  thumbnailUrl: info.thumbnail || (info.thumbnails && info.thumbnails.length > 0 ? info.thumbnails[info.thumbnails.length - 1].url : '')
+                });
+              } catch (e) {
+                reject(e);
+              }
+            }
+          });
+        });
+
+        downloadManager.activeDownloads.set(task.id || task.url, metadataProcess);
+        metadata = await getMetadataPromise;
       } catch (err) {
+        if (!downloadManager.tasks.has(task.id || task.url)) {
+          return;
+        }
         downloadManager.updateTask(task.id || task.url, {
           status: STATUS.ERROR,
           errorMessage: `Metadata extraction failed: ${err.message}`,
           progress: 0
         }, webContents);
+        return;
+      } finally {
+        downloadManager.activeDownloads.delete(task.id || task.url);
+      }
+
+      if (!downloadManager.tasks.has(task.id || task.url)) {
         return;
       }
 
@@ -129,40 +179,55 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
         progress: 0
       }, webContents);
 
+      if (!downloadManager.tasks.has(task.id || task.url)) {
+        return;
+      }
+
       // Build task with fresh duration for long-video check
       const taskWithDuration = { ...task, duration: metadata.duration };
       if (!taskWithDuration.duration) taskWithDuration.duration = metadata.duration;
 
       await new Promise((resolve) => {
+        if (!downloadManager.tasks.has(task.id || task.url)) {
+          resolve();
+          return;
+        }
+
         const downloadParams = {
           url: task.url,
           task: taskWithDuration,
           settings,
           ytdlpPath,
           onProgress: ({ status, progress, speed }) => {
-            downloadManager.updateTask(task.id || task.url, { status, progress, speed }, webContents);
+            if (downloadManager.tasks.has(task.id || task.url)) {
+              downloadManager.updateTask(task.id || task.url, { status, progress, speed }, webContents);
+            }
           },
           onError: (msg) => {
-            downloadManager.updateTask(task.id || task.url, {
-              status: STATUS.ERROR,
-              errorMessage: msg,
-              progress: 0
-            }, webContents);
+            if (downloadManager.tasks.has(task.id || task.url)) {
+              downloadManager.updateTask(task.id || task.url, {
+                status: STATUS.ERROR,
+                errorMessage: msg,
+                progress: 0
+              }, webContents);
+            }
           },
           onClose: (success, errorMessage) => {
             downloadManager.activeDownloads.delete(task.id || task.url);
-            if (success) {
-              downloadManager.updateTask(task.id || task.url, {
-                status: STATUS.COMPLETED,
-                progress: 100,
-                filePath: expectedPath
-              }, webContents);
-            } else {
-              downloadManager.updateTask(task.id || task.url, {
-                status: STATUS.ERROR,
-                errorMessage: errorMessage || 'Download failed',
-                progress: 0
-              }, webContents);
+            if (downloadManager.tasks.has(task.id || task.url)) {
+              if (success) {
+                downloadManager.updateTask(task.id || task.url, {
+                  status: STATUS.COMPLETED,
+                  progress: 100,
+                  filePath: expectedPath
+                }, webContents);
+              } else {
+                downloadManager.updateTask(task.id || task.url, {
+                  status: STATUS.ERROR,
+                  errorMessage: errorMessage || 'Download failed',
+                  progress: 0
+                }, webContents);
+              }
             }
             resolve();
           }
@@ -179,11 +244,13 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       });
 
     } catch (err) {
-      downloadManager.updateTask(task.id || task.url, {
-        status: STATUS.ERROR,
-        errorMessage: err.message || 'Unexpected error during download',
-        progress: 0
-      }, webContents);
+      if (downloadManager.tasks.has(task.id || task.url)) {
+        downloadManager.updateTask(task.id || task.url, {
+          status: STATUS.ERROR,
+          errorMessage: err.message || 'Unexpected error during download',
+          progress: 0
+        }, webContents);
+      }
     } finally {
       semaphore.release();
     }

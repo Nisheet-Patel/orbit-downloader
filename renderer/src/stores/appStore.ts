@@ -9,6 +9,7 @@ interface AppStore {
   settings: Partial<Settings>;
   isLoadingSettings: boolean;
   appVersion: string;
+  bulkText: string;
   setMode: (mode: AppMode) => void;
   setTheme: (theme: Theme) => void;
   openSettingsModal: () => void;
@@ -18,6 +19,7 @@ interface AppStore {
   setSettings: (settings: Partial<Settings>) => void;
   setIsLoadingSettings: (v: boolean) => void;
   setAppVersion: (v: string) => void;
+  setBulkText: (v: string) => void;
 }
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -28,6 +30,7 @@ export const useAppStore = create<AppStore>((set) => ({
   settings: {},
   isLoadingSettings: false,
   appVersion: '1.0.0',
+  bulkText: '',
   setMode: (mode) => set({ mode }),
   setTheme: (theme) => set({ theme }),
   openSettingsModal: () => set({ settingsModalOpen: true }),
@@ -37,4 +40,5 @@ export const useAppStore = create<AppStore>((set) => ({
   setSettings: (settings) => set({ settings }),
   setIsLoadingSettings: (isLoadingSettings) => set({ isLoadingSettings }),
   setAppVersion: (appVersion) => set({ appVersion }),
+  setBulkText: (bulkText) => set({ bulkText }),
 }));

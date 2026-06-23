@@ -1,6 +1,6 @@
 {
   "name": "orbit-yt-dlp-gui",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Orbit – YouTube Downloader",
   "main": "main.js",
   "scripts": {

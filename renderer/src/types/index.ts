@@ -40,6 +40,9 @@ export interface Task {
   format: 'video' | 'audio';
   quality: string;
   thumbnailUrl?: string;
+  isPlaylist?: boolean;
+  videoIds?: string[];
+  playlistId?: string;
 }
 
 export interface Toast {
@@ -99,6 +102,7 @@ export interface WindowOrbitAPI {
   windowClose: () => void;
   onQueueProgress: (callback: (data: QueueProgress) => void) => (() => void);
   onQueueTaskUpdated: (callback: (data: Partial<Task> & { url: string }) => void) => (() => void);
+  onQueueReloadNeeded: (callback: () => void) => (() => void);
 }
 
 declare global {
