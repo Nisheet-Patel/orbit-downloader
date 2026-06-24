@@ -92,3 +92,25 @@ On Windows, certain antivirus applications may flag auto-downloaded binaries or 
 ### 3. YouTube Bot Block Errors
 If downloads fail with errors asking to sign in or confirm you're not a bot:
 * **Resolution**: Open **Settings**, select your primary web browser under **Cookies Source** (e.g. Chrome, Edge, Firefox), and click **Save**. Orbit will extract active cookies from your browser to bypass the bot detection.
+
+---
+
+## 🔄 Automatic Updates
+
+Orbit Downloader automatically checks for updates on startup and every 2 hours in the background.
+
+* **Update Detection**: When a new version is released on GitHub, Orbit Downloader automatically downloads the installer in the background.
+* **Installation**: Once the download completes, a prompt will appear asking you to restart the application to apply the update immediately, or defer the installation until the next time you exit the app.
+* **Logs**: Auto-updater activity is logged to `%USERPROFILE%/AppData/Roaming/orbit-downloader/logs/main.log`.
+
+### 🚀 Creating a New Release
+
+To release a new version:
+1. Update the version number in `package.json` (e.g., `0.3.2`).
+2. Commit and push the change to the `main` branch.
+3. Tag the commit with the version prefix (e.g., `v0.3.2`) and push the tag:
+   ```bash
+   git tag v0.3.2
+   git push origin v0.3.2
+   ```
+4. The GitHub Action will trigger automatically to build the Windows installer (`.exe`) and block metadata (`latest.yml`), then publish them to the GitHub Releases page.

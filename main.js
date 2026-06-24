@@ -11,6 +11,7 @@ const { startDownloads, Semaphore } = require('./src/queueRunner');
 const { getMetadata, getPlaylistInfo } = require('./src/ytdlpRunner');
 const metadataSemaphore = new Semaphore(3);
 const { validateYoutubeUrl } = require('./src/utils');
+const { initUpdater } = require('./src/updater');
 
 // Keep a global reference to avoid garbage collection
 let mainWindow;
@@ -364,6 +365,7 @@ ipcMain.on(IPC_CHANNELS.WINDOW_CLOSE, () => {
 
 app.whenReady().then(() => {
   createWindow();
+  initUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

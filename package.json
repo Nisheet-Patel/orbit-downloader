@@ -19,7 +19,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "electron-store": "^8.0.0"
+    "electron-log": "^5.4.4",
+    "electron-store": "^8.0.0",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
@@ -31,6 +33,13 @@
   "build": {
     "appId": "com.orbit.downloader",
     "productName": "Orbit Downloader",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Nisheet-Patel",
+        "repo": "orbit-downloader"
+      }
+    ],
     "directories": {
       "output": "dist"
     },
