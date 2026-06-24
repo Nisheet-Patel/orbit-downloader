@@ -43,7 +43,7 @@ export function BulkDownload() {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
     const urls = lines.filter((l) => validateYoutubeUrl(l));
     if (urls.length === 0) {
-      addToast('warning', 'No valid YouTube URLs found');
+      addToast('warning', 'No valid URLs found');
       return;
     }
 
@@ -122,19 +122,19 @@ export function BulkDownload() {
     <div className="h-full max-w-[1000px] mx-auto bg-[var(--color-surface-elevated)] rounded-3xl shadow-lg border border-[var(--color-border-subtle)] p-8 flex flex-col gap-6 min-h-0">
       <div>
         <h1 className="text-[28px] font-bold text-[var(--color-text-primary)]">Bulk Download</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] max-w-[450px]">Add multiple YouTube URLs to the queue and download them all at once.</p>
+        <p className="text-sm text-[var(--color-text-secondary)] max-w-[450px]">Add multiple media URLs (YouTube, Spotify, etc.) to the queue and download them all at once.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch flex-1 min-h-0">
         {/* Left Column - Input Builder */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-[var(--color-text-secondary)]">Add YouTube links</label>
+            <label className="text-sm font-semibold text-[var(--color-text-secondary)]">Add media links</label>
             <div className="h-32 bg-[var(--color-surface)] border-[1.5px] border-[var(--color-border)] rounded-xl overflow-hidden flex flex-col focus-within:border-[var(--color-accent-purple)] transition-all">
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Paste YouTube URLs here, one per line...&#10;https://www.youtube.com/watch?v=..."
+                placeholder="Paste URLs here (YouTube, Spotify, etc.), one per line...&#10;https://www.youtube.com/watch?v=..."
                 className="w-full h-full resize-none bg-transparent border-0 outline-none p-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-disabled)] font-[family:inherit] leading-relaxed"
               />
             </div>

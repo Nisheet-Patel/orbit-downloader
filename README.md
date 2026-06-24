@@ -1,6 +1,6 @@
-# Orbit – YT Downloader
+# Orbit Downloader
 
-Orbit is a modern, premium desktop YouTube video, Audio, Playlist downloader built with Electron and HTML5/CSS3. It offers a dual-mode interface (Single vs. Bulk Download), interactive queue controls, real-time download speed trackers, and dynamic light/dark theme persistence.
+Orbit Downloader is a modern, premium cross-platform media downloader supporting YouTube, Spotify, and other platforms. Built with Electron and HTML5/CSS3, it offers a dual-mode interface (Single vs. Bulk Download), interactive queue controls, real-time download speed trackers, and dynamic light/dark theme persistence.
 
 It uses **yt-dlp** for metadata extraction and media fetching, and **FFmpeg** for high-quality audio extraction and video/audio merging.
 
@@ -71,8 +71,8 @@ Run the following scripts in the project directory to compile and package the ap
 
 Orbit stores configuration settings (e.g., download folder location, active download history, dark mode preference) inside the system's standard user data folder:
 
-* **Windows**: `%APPDATA%/orbit-yt-dlp-gui/` (corresponds to `C:\Users\<Username>\AppData\Roaming\orbit-yt-dlp-gui`)
-* **macOS**: `~/Library/Application Support/orbit-yt-dlp-gui/`
+* **Windows**: `%APPDATA%/orbit-downloader/` (corresponds to `C:\Users\<Username>\AppData\Roaming\orbit-downloader`)
+* **macOS**: `~/Library/Application Support/orbit-downloader/`
 
 To reset the application settings completely, close Orbit and delete the `config.json` file inside the corresponding folder above.
 
@@ -87,7 +87,7 @@ If the app shows a warning status that FFmpeg is missing:
 
 ### 2. Antivirus Flags yt-dlp or FFmpeg
 On Windows, certain antivirus applications may flag auto-downloaded binaries or packaged resources:
-* **Resolution**: Add an exclusion directory in your antivirus settings for Orbit's AppData directory: `%APPDATA%/orbit-yt-dlp-gui/bin/`.
+* **Resolution**: Add an exclusion directory in your antivirus settings for Orbit's AppData directory: `%APPDATA%/orbit-downloader/bin/`.
 
 ### 3. YouTube Bot Block Errors
 If downloads fail with errors asking to sign in or confirm you're not a bot:

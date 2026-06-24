@@ -1,7 +1,7 @@
 {
-  "name": "orbit-yt-dlp-gui",
+  "name": "orbit-downloader",
   "version": "0.3.1",
-  "description": "Orbit – YouTube Downloader",
+  "description": "Orbit Downloader – A modern cross-platform media downloader supporting YouTube, Spotify, and other platforms.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -29,8 +29,8 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.orbit.ytdownloader",
-    "productName": "Orbit – YT Downloader",
+    "appId": "com.orbit.downloader",
+    "productName": "Orbit Downloader",
     "directories": {
       "output": "dist"
     },

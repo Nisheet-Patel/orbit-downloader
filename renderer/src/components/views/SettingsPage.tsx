@@ -252,8 +252,8 @@ export function SettingsPage() {
           <div className="pt-5 border-t border-[var(--color-border)] flex items-center gap-4 select-none">
             <img src="./orbit-logo.svg" alt="Orbit" className="w-14 h-14 object-contain" />
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-[var(--color-text-primary)] m-0">Orbit v{appVersion}</h3>
-              <p className="text-xs text-[var(--color-text-secondary)] m-0 mt-0.5">YouTube Video & Audio Downloader</p>
+              <h3 className="text-base font-bold text-[var(--color-text-primary)] m-0">Orbit Downloader v{appVersion}</h3>
+              <p className="text-xs text-[var(--color-text-secondary)] m-0 mt-0.5">A modern cross-platform media downloader supporting YouTube, Spotify, and other platforms.</p>
               <p className="text-xs text-[var(--color-text-primary)] m-0 mt-1">
                 <strong>Developer:</strong>{' '}
                 <a

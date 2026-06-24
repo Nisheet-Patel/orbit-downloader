@@ -186,7 +186,7 @@ export function SingleDownload() {
       <div className="flex-1 flex flex-col gap-6">
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Single Download</h2>
-          <p className="text-xs text-[var(--color-text-secondary)] mt-1">Download a single video or audio file from YouTube</p>
+          <p className="text-xs text-[var(--color-text-secondary)] mt-1">Download a single video or audio file from YouTube, Spotify, and other platforms</p>
         </div>
 
         <div className="flex gap-2">
@@ -196,7 +196,7 @@ export function SingleDownload() {
               value={url}
               disabled={downloading}
               onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="Paste YouTube link here..."
+              placeholder="Paste link here (YouTube, Spotify, etc.)..."
               className="w-full h-11 pl-4 pr-10 border-[1.5px] border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-disabled)] text-[13px] outline-none transition-all focus:border-[var(--color-accent-red)] focus:shadow-[0_0_0_3px_rgba(232,0,42,0.12)] disabled:opacity-60 disabled:cursor-not-allowed"
             />
             {url && !downloading && (

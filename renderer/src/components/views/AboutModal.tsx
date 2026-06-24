@@ -11,8 +11,8 @@ export function AboutModal() {
     <Modal isOpen={isOpen} onClose={close} className="text-center">
       <div className="flex flex-col items-center gap-4">
         <img src="./orbit-logo.svg" alt="Orbit" className="w-20 h-20" />
-        <h2 className="text-2xl font-bold text-[var(--color-text-primary)] m-0">Orbit</h2>
-        <p className="text-sm text-[var(--color-text-secondary)] m-0">YouTube Video and Audio Downloader</p>
+        <h2 className="text-2xl font-bold text-[var(--color-text-primary)] m-0">Orbit Downloader</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] m-0">A modern cross-platform media downloader supporting YouTube, Spotify, and other platforms.</p>
         <div className="w-full h-px bg-[var(--color-border)]" />
         <p className="text-sm text-[var(--color-text-primary)] m-0">
           <strong>Developer:</strong>{' '}
