@@ -66,6 +66,9 @@ try {
     fetchMetadata: (url) => ipcRenderer.invoke(IPC_CHANNELS.METADATA_FETCH, { url }),
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', { url }),
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    getDependencyStatus: () => ipcRenderer.invoke('dependency:get-status'),
+    downloadDependency: (id) => ipcRenderer.invoke('dependency:download-one', id),
+    downloadAllDependencies: () => ipcRenderer.invoke('dependency:download-all'),
     windowMinimize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_MINIMIZE),
     windowMaximize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_MAXIMIZE),
     windowClose: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_CLOSE),
@@ -90,6 +93,14 @@ try {
     onQueueReloadNeeded: (callback) => {
       const channel = 'queue:reloadNeeded';
       const handler = () => callback();
+      ipcRenderer.on(channel, handler);
+      return () => {
+        ipcRenderer.removeListener(channel, handler);
+      };
+    },
+    onDependencyStatusChange: (callback) => {
+      const channel = 'dependency:status-change';
+      const handler = (_event, data) => callback(data);
       ipcRenderer.on(channel, handler);
       return () => {
         ipcRenderer.removeListener(channel, handler);

@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 // Types
 export type AppMode = 'single' | 'bulk' | 'settings';
 export type Theme = 'light' | 'dark';
@@ -48,7 +50,7 @@ export interface Task {
 export interface Toast {
   id: string;
   type: ToastType;
-  message: string;
+  message: ReactNode;
 }
 
 export interface ValidationResult {
@@ -70,6 +72,7 @@ export interface QueueResult {
   added: string[];
   duplicates: string[];
   invalid: string[];
+  error?: string;
 }
 
 export interface QueueProgress {
@@ -80,13 +83,25 @@ export interface QueueProgress {
   speed: string;
 }
 
+export type DependencyStatus = 'installed' | 'missing' | 'downloading' | 'failed';
+
+export interface DependencyInfo {
+  id: string;
+  name: string;
+  exeName: string;
+  url: string;
+  status: DependencyStatus;
+  progress: number;
+  error?: string | null;
+}
+
 export interface WindowOrbitAPI {
   getSettings: () => Promise<Settings>;
   saveSettings: (partial: Partial<Settings>) => Promise<{ success: boolean; error?: string; settings?: Settings }>;
   validateFfmpeg: (path: string) => Promise<ValidationResult>;
   resolveFfmpeg: (path: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
   validateYtDlp: (path: string) => Promise<ValidationResult>;
-  ensureYtDlp: () => Promise<{ ok: boolean; source?: string; error?: string }>;
+  ensureYtDlp: () => Promise<{ ok: boolean; path?: string; source?: string; error?: string }>;
   chooseDownloadFolder: () => Promise<string | null>;
   queueAdd: (urls: string[], options?: { format?: string; quality?: string }) => Promise<QueueResult>;
   queueRemove: (url: string) => Promise<{ success: boolean }>;
@@ -97,12 +112,16 @@ export interface WindowOrbitAPI {
   fetchMetadata: (url: string) => Promise<{ ok: boolean; title?: string; thumbnailUrl?: string; duration?: number; channel?: string; viewCount?: number; error?: string }>;
   openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
   getVersion: () => Promise<string>;
+  getDependencyStatus: () => Promise<Record<string, DependencyInfo>>;
+  downloadDependency: (id: string) => Promise<{ success: boolean; error?: string }>;
+  downloadAllDependencies: () => Promise<Record<string, 'installed' | 'missing'>>;
   windowMinimize: () => void;
   windowMaximize: () => void;
   windowClose: () => void;
   onQueueProgress: (callback: (data: QueueProgress) => void) => (() => void);
   onQueueTaskUpdated: (callback: (data: Partial<Task> & { url: string }) => void) => (() => void);
   onQueueReloadNeeded: (callback: () => void) => (() => void);
+  onDependencyStatusChange: (callback: (data: DependencyInfo) => void) => (() => void);
 }
 
 declare global {

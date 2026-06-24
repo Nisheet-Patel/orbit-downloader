@@ -1,4 +1,4 @@
-import type { Settings, Task, QueueProgress } from '@/types';
+import type { Settings, Task, QueueProgress, DependencyInfo } from '@/types';
 
 class IPCService {
   private get orbit() {
@@ -24,6 +24,9 @@ class IPCService {
   fetchMetadata = (url: string) => this.orbit.fetchMetadata(url);
   openExternal = (url: string) => this.orbit.openExternal(url);
   getVersion = () => this.orbit.getVersion();
+  getDependencyStatus = () => this.orbit.getDependencyStatus();
+  downloadDependency = (id: string) => this.orbit.downloadDependency(id);
+  downloadAllDependencies = () => this.orbit.downloadAllDependencies();
   windowMinimize = () => this.orbit.windowMinimize();
   windowMaximize = () => this.orbit.windowMaximize();
   windowClose = () => this.orbit.windowClose();
@@ -33,6 +36,8 @@ class IPCService {
     this.orbit.onQueueTaskUpdated(callback);
   onQueueReloadNeeded = (callback: () => void): (() => void) =>
     this.orbit.onQueueReloadNeeded(callback);
+  onDependencyStatusChange = (callback: (data: DependencyInfo) => void): (() => void) =>
+    this.orbit.onDependencyStatusChange(callback);
 }
 
 export const ipcService = new IPCService();

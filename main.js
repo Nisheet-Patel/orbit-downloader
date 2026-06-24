@@ -12,6 +12,10 @@ const { getMetadata, getPlaylistInfo } = require('./src/ytdlpRunner');
 const metadataSemaphore = new Semaphore(3);
 const { validateYoutubeUrl } = require('./src/utils');
 const { initUpdater } = require('./src/updater');
+const {
+  setWebContents,
+  registerDependencyIPC
+} = require('./src/dependencyManager');
 
 // Keep a global reference to avoid garbage collection
 let mainWindow;
@@ -157,7 +161,10 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
   const reversedUrls = [...urls].reverse();
   const settings = getSettings();
   const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
-  const ytdlpPath = ytDlpResult.ok ? ytDlpResult.path : 'yt-dlp';
+  if (!ytDlpResult.ok) {
+    return { added: [], duplicates: [], invalid: [], error: 'yt-dlp not found: ' + ytDlpResult.error };
+  }
+  const ytdlpPath = ytDlpResult.path;
   const webContents = getMainWebContents();
 
   for (const url of reversedUrls) {
@@ -364,7 +371,10 @@ ipcMain.on(IPC_CHANNELS.WINDOW_CLOSE, () => {
 });
 
 app.whenReady().then(() => {
+  registerDependencyIPC();
+
   createWindow();
+  setWebContents(mainWindow.webContents);
   initUpdater();
 
   app.on('activate', () => {

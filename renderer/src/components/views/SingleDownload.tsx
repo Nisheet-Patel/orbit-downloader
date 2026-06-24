@@ -81,11 +81,25 @@ export function SingleDownload() {
         setPreviewState('loaded');
       } else {
         setPreviewState('empty');
+        const errLower = (res.error || '').toLowerCase();
+        if (errLower.includes('yt-dlp')) {
+          addToast('error', (
+            <span>
+              yt-dlp not found.{' '}
+              <button
+                onClick={() => setMode('settings')}
+                className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+              >
+                Open Settings
+              </button>
+            </span>
+          ));
+        }
       }
     } catch {
       setPreviewState('empty');
     }
-  }, []);
+  }, [addToast, setMode]);
 
   useEffect(() => {
     const handleDropped = (e: Event) => {
@@ -129,16 +143,82 @@ export function SingleDownload() {
     setDownloading(true);
     try {
       const res = await addToQueue([url.trim()], { format, quality });
+      if (res.error) {
+        setDownloading(false);
+        const errLower = res.error.toLowerCase();
+        if (errLower.includes('yt-dlp')) {
+          addToast('error', (
+            <span>
+              yt-dlp not found.{' '}
+              <button
+                onClick={() => setMode('settings')}
+                className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+              >
+                Open Settings
+              </button>
+            </span>
+          ));
+        } else if (errLower.includes('ffmpeg')) {
+          addToast('error', (
+            <span>
+              FFmpeg not found.{' '}
+              <button
+                onClick={() => setMode('settings')}
+                className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+              >
+                Open Settings
+              </button>
+            </span>
+          ));
+        } else {
+          addToast('error', res.error);
+        }
+        return;
+      }
+
       if (res.added.length > 0) {
-        await startQueue();
-        addToast('info', 'Download started');
+        const startRes = await startQueue();
+        if (!startRes.success) {
+          setDownloading(false);
+          const errLower = (startRes.error || '').toLowerCase();
+          if (errLower.includes('yt-dlp')) {
+            addToast('error', (
+              <span>
+                yt-dlp not found.{' '}
+                <button
+                  onClick={() => setMode('settings')}
+                  className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+                >
+                  Open Settings
+                </button>
+              </span>
+            ));
+          } else if (errLower.includes('ffmpeg')) {
+            addToast('error', (
+              <span>
+                FFmpeg not found.{' '}
+                <button
+                  onClick={() => setMode('settings')}
+                  className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+                >
+                  Open Settings
+                </button>
+              </span>
+            ));
+          } else {
+            addToast('error', startRes.error || 'Failed to start download');
+          }
+        } else {
+          addToast('info', 'Download started');
+        }
       } else if (res.duplicates.length > 0) {
         addToast('warning', 'Already in queue');
       }
     } catch {
+      setDownloading(false);
       addToast('error', 'Failed to start download');
     }
-  }, [url, format, quality, addToQueue, startQueue, addToast]);
+  }, [url, format, quality, addToQueue, startQueue, addToast, setMode]);
 
   const handleCancel = async () => {
     // Remove from queue

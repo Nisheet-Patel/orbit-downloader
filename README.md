@@ -114,3 +114,9 @@ To release a new version:
    git push origin v0.3.2
    ```
 4. The GitHub Action will trigger automatically to build the Windows installer (`.exe`) and block metadata (`latest.yml`), then publish them to the GitHub Releases page.
+
+---
+
+## 🛠️ External Dependency Manager
+
+Orbit Downloader features a built-in Dependency Manager that automatically downloads and configures external tools (`yt-dlp`, `ffmpeg`, and `ffprobe`).

@@ -30,6 +30,7 @@ const audioQualities = [
 export function BulkDownload() {
   const text = useAppStore((s) => s.bulkText);
   const setText = useAppStore((s) => s.setBulkText);
+  const setMode = useAppStore((s) => s.setMode);
   const [format, setFormat] = useState<Format>('video');
   const [quality, setQuality] = useState('1080');
   const addToast = useToastStore((s) => s.addToast);
@@ -48,6 +49,37 @@ export function BulkDownload() {
     }
 
     const res = await addToQueue(urls, { format, quality });
+    if (res.error) {
+      const errLower = res.error.toLowerCase();
+      if (errLower.includes('yt-dlp')) {
+        addToast('error', (
+          <span>
+            yt-dlp not found.{' '}
+            <button
+              onClick={() => setMode('settings')}
+              className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+            >
+              Open Settings
+            </button>
+          </span>
+        ));
+      } else if (errLower.includes('ffmpeg')) {
+        addToast('error', (
+          <span>
+            FFmpeg not found.{' '}
+            <button
+              onClick={() => setMode('settings')}
+              className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+            >
+              Open Settings
+            </button>
+          </span>
+        ));
+      } else {
+        addToast('error', res.error);
+      }
+      return;
+    }
     if (res.added.length > 0) {
       addToast('success', `Added ${res.added.length} item(s) to queue`);
       const remaining = lines.filter((l) => !urls.includes(l));
@@ -59,7 +91,7 @@ export function BulkDownload() {
     if (res.invalid.length > 0) {
       addToast('error', `${res.invalid.length} invalid URL(s) skipped`);
     }
-  }, [text, format, quality, addToQueue, addToast]);
+  }, [text, format, quality, addToQueue, addToast, setMode, setText]);
 
   const handleRemove = useCallback(async (url: string) => {
     try {
@@ -83,9 +115,36 @@ export function BulkDownload() {
     if (res.success) {
       addToast('info', 'Downloads started');
     } else {
-      addToast('error', res.error || 'No pending tasks');
+      const errLower = (res.error || '').toLowerCase();
+      if (errLower.includes('yt-dlp')) {
+        addToast('error', (
+          <span>
+            yt-dlp not found.{' '}
+            <button
+              onClick={() => setMode('settings')}
+              className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+            >
+              Open Settings
+            </button>
+          </span>
+        ));
+      } else if (errLower.includes('ffmpeg')) {
+        addToast('error', (
+          <span>
+            FFmpeg not found.{' '}
+            <button
+              onClick={() => setMode('settings')}
+              className="underline font-bold text-rose-300 bg-transparent border-0 cursor-pointer p-0 ml-1 hover:text-rose-100 transition-colors"
+            >
+              Open Settings
+            </button>
+          </span>
+        ));
+      } else {
+        addToast('error', res.error || 'No pending tasks');
+      }
     }
-  }, [startQueue, addToast]);
+  }, [startQueue, addToast, setMode]);
 
   // Ctrl+D keyboard shortcut to trigger start downloads
   useEffect(() => {

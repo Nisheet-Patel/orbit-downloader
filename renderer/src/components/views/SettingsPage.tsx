@@ -3,6 +3,7 @@ import { ipcService } from '@/services/ipcService';
 import { useAppStore } from '@/stores/appStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useTheme } from '@/hooks/useTheme';
+import { DependencyDownloadModal } from '@/components/ui/DependencyDownloadModal';
 import type { Settings } from '@/types';
 
 export function SettingsPage() {
@@ -12,6 +13,28 @@ export function SettingsPage() {
   const [settings, setLocalSettings] = useState<Partial<Settings>>({});
   const [ffmpegValid, setFfmpegValid] = useState<'neutral' | 'success' | 'error'>('neutral');
   const [ytdlpValid, setYtdlpValid] = useState<'neutral' | 'success' | 'error'>('neutral');
+  const [ffmpegPath, setFfmpegPath] = useState<string>('');
+  const [ytdlpPath, setYtdlpPath] = useState<string>('');
+  const [activeDownloadDep, setActiveDownloadDep] = useState<string | null>(null);
+  
+  const [dependencies, setDependencies] = useState<Record<string, any>>({});
+
+  const loadDependencies = useCallback(async () => {
+    try {
+      const deps = await ipcService.getDependencyStatus();
+      setDependencies(deps);
+    } catch (err) {
+      console.error('Failed to load dependency statuses:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDependencies();
+    const removeListener = ipcService.onDependencyStatusChange((updatedDep) => {
+      setDependencies(prev => ({ ...prev, [updatedDep.id]: updatedDep }));
+    });
+    return () => removeListener();
+  }, [loadDependencies]);
 
   const load = useCallback(async () => {
     try {
@@ -20,21 +43,33 @@ export function SettingsPage() {
       
       if (s.ffmpegLocation) {
         ipcService.resolveFfmpeg(s.ffmpegLocation)
-          .then(res => setFfmpegValid(res.ok ? 'success' : 'error'))
+          .then(res => {
+            setFfmpegValid(res.ok ? 'success' : 'error');
+            if (res.ok && res.path) setFfmpegPath(res.path);
+          })
           .catch(() => setFfmpegValid('error'));
       } else {
         ipcService.resolveFfmpeg('')
-          .then(res => setFfmpegValid(res.ok ? 'success' : 'error'))
+          .then(res => {
+            setFfmpegValid(res.ok ? 'success' : 'error');
+            if (res.ok && res.path) setFfmpegPath(res.path);
+          })
           .catch(() => setFfmpegValid('error'));
       }
 
       if (s.ytdlpLocation) {
         ipcService.validateYtDlp(s.ytdlpLocation)
-          .then(res => setYtdlpValid(res.valid ? 'success' : 'error'))
+          .then(res => {
+            setYtdlpValid(res.valid ? 'success' : 'error');
+            if (res.valid) setYtdlpPath(s.ytdlpLocation || '');
+          })
           .catch(() => setYtdlpValid('error'));
       } else {
         ipcService.ensureYtDlp()
-          .then(res => setYtdlpValid(res.ok ? 'success' : 'error'))
+          .then(res => {
+            setYtdlpValid(res.ok ? 'success' : 'error');
+            if (res.ok && res.path) setYtdlpPath(res.path);
+          })
           .catch(() => setYtdlpValid('error'));
       }
     } catch {
@@ -73,6 +108,7 @@ export function SettingsPage() {
     try {
       const res = await ipcService.resolveFfmpeg(settings.ffmpegLocation || '');
       setFfmpegValid(res.ok ? 'success' : 'error');
+      if (res.ok && res.path) setFfmpegPath(res.path);
     } catch {
       setFfmpegValid('error');
     }
@@ -85,9 +121,11 @@ export function SettingsPage() {
       if (!path) {
         const res = await ipcService.ensureYtDlp();
         setYtdlpValid(res.ok ? 'success' : 'error');
+        if (res.ok && res.path) setYtdlpPath(res.path);
       } else {
         const res = await ipcService.validateYtDlp(path);
         setYtdlpValid(res.valid ? 'success' : 'error');
+        if (res.valid) setYtdlpPath(path);
       }
     } catch {
       setYtdlpValid('error');
@@ -210,14 +248,46 @@ export function SettingsPage() {
                   Validate
                 </button>
               </div>
-              <div className={`inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-                ffmpegValid === 'success' ? 'bg-[var(--color-success-light)] text-[var(--color-success)]' :
-                ffmpegValid === 'error' ? 'bg-[rgba(232,0,42,0.08)] text-[var(--color-error)]' :
-                'bg-[rgba(0,0,0,0.04)] text-[var(--color-text-disabled)]'
-              }`}>
-                <span className="text-[11px]">●</span>
-                <span>{ffmpegValid === 'success' ? 'FFmpeg found' : ffmpegValid === 'error' ? 'FFmpeg not found' : 'Checking...'}</span>
+              <div className="mt-2 flex flex-wrap gap-2 items-center">
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                  ffmpegValid === 'success' ? 'bg-[var(--color-success-light)] text-[var(--color-success)]' :
+                  ffmpegValid === 'error' ? 'bg-[rgba(232,0,42,0.08)] text-[var(--color-error)]' :
+                  'bg-[rgba(0,0,0,0.04)] text-[var(--color-text-disabled)]'
+                }`}>
+                  <span className="text-[11px]">●</span>
+                  <span>{ffmpegValid === 'success' ? 'FFmpeg found' : ffmpegValid === 'error' ? 'FFmpeg missing' : 'Checking...'}</span>
+                </div>
+                {ffmpegValid === 'error' && (
+                  <button
+                    onClick={() => setActiveDownloadDep('ffmpeg')}
+                    className="h-8 px-3 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer border-0 flex items-center gap-1 shadow-sm"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Auto Resolve
+                  </button>
+                )}
               </div>
+              {ffmpegValid === 'success' && ffmpegPath && (
+                <div className="mt-1.5 text-[11px] text-[var(--color-text-secondary)] font-mono break-all bg-[rgba(0,0,0,0.02)] dark:bg-[rgba(255,255,255,0.02)] p-2 rounded border border-[var(--color-border)] select-text">
+                  Path: {ffmpegPath}
+                </div>
+              )}
+              {dependencies['ffmpeg']?.status === 'downloading' && (
+                <div className="mt-2 space-y-1.5 p-3 rounded-lg border border-[var(--color-border)] bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.01)]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[var(--color-text-secondary)]">Downloading FFmpeg...</span>
+                    <span className="text-[var(--color-accent-purple)] font-bold">{dependencies['ffmpeg'].progress}%</span>
+                  </div>
+                  <div className="w-full bg-[var(--color-border)] rounded-full h-1 overflow-hidden">
+                    <div
+                      className="bg-[var(--color-accent-purple)] h-1 rounded-full transition-all duration-300"
+                      style={{ width: `${dependencies['ffmpeg'].progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -237,14 +307,46 @@ export function SettingsPage() {
                   Validate
                 </button>
               </div>
-              <div className={`inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-                ytdlpValid === 'success' ? 'bg-[var(--color-success-light)] text-[var(--color-success)]' :
-                ytdlpValid === 'error' ? 'bg-[rgba(232,0,42,0.08)] text-[var(--color-error)]' :
-                'bg-[rgba(0,0,0,0.04)] text-[var(--color-text-disabled)]'
-              }`}>
-                <span className="text-[11px]">●</span>
-                <span>{ytdlpValid === 'success' ? 'yt-dlp found' : ytdlpValid === 'error' ? 'yt-dlp not found' : 'Checking...'}</span>
+              <div className="mt-2 flex flex-wrap gap-2 items-center">
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                  ytdlpValid === 'success' ? 'bg-[var(--color-success-light)] text-[var(--color-success)]' :
+                  ytdlpValid === 'error' ? 'bg-[rgba(232,0,42,0.08)] text-[var(--color-error)]' :
+                  'bg-[rgba(0,0,0,0.04)] text-[var(--color-text-disabled)]'
+                }`}>
+                  <span className="text-[11px]">●</span>
+                  <span>{ytdlpValid === 'success' ? 'yt-dlp found' : ytdlpValid === 'error' ? 'yt-dlp missing' : 'Checking...'}</span>
+                </div>
+                {ytdlpValid === 'error' && (
+                  <button
+                    onClick={() => setActiveDownloadDep('ytdlp')}
+                    className="h-8 px-3 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer border-0 flex items-center gap-1 shadow-sm"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Auto Resolve
+                  </button>
+                )}
               </div>
+              {ytdlpValid === 'success' && ytdlpPath && (
+                <div className="mt-1.5 text-[11px] text-[var(--color-text-secondary)] font-mono break-all bg-[rgba(0,0,0,0.02)] dark:bg-[rgba(255,255,255,0.02)] p-2 rounded border border-[var(--color-border)] select-text">
+                  Path: {ytdlpPath}
+                </div>
+              )}
+              {dependencies['ytdlp']?.status === 'downloading' && (
+                <div className="mt-2 space-y-1.5 p-3 rounded-lg border border-[var(--color-border)] bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.01)]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-[var(--color-text-secondary)]">Downloading yt-dlp...</span>
+                    <span className="text-[var(--color-accent-purple)] font-bold">{dependencies['ytdlp'].progress}%</span>
+                  </div>
+                  <div className="w-full bg-[var(--color-border)] rounded-full h-1 overflow-hidden">
+                    <div
+                      className="bg-[var(--color-accent-purple)] h-1 rounded-full transition-all duration-300"
+                      style={{ width: `${dependencies['ytdlp'].progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -275,6 +377,16 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+      {activeDownloadDep && (
+        <DependencyDownloadModal
+          dependencyId={activeDownloadDep}
+          onClose={() => setActiveDownloadDep(null)}
+          onSuccess={() => {
+            load();
+            setActiveDownloadDep(null);
+          }}
+        />
+      )}
     </div>
   );
 }

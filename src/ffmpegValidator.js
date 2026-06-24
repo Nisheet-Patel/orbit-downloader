@@ -84,6 +84,12 @@ async function resolveFfmpegPath(manualPath) {
   if (manualPath && manualPath.trim()) {
     candidates.push(manualPath.trim());
   }
+  const { app } = require('electron');
+  const binDir = app.isPackaged
+    ? path.join(path.dirname(app.getPath('exe')), 'bin')
+    : path.join(app.getAppPath(), 'bin');
+  candidates.push(path.join(binDir, PLATFORM_BINARY));
+
   const devSubdir = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux';
   candidates.push(path.join(process.resourcesPath, 'bin', PLATFORM_BINARY));
   candidates.push(path.join(process.cwd(), 'bin', devSubdir, PLATFORM_BINARY));
