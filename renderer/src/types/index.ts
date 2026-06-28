@@ -115,6 +115,9 @@ export interface WindowOrbitAPI {
   getDependencyStatus: () => Promise<Record<string, DependencyInfo>>;
   downloadDependency: (id: string) => Promise<{ success: boolean; error?: string }>;
   downloadAllDependencies: () => Promise<Record<string, 'installed' | 'missing'>>;
+  checkUpdates: () => Promise<{ success: boolean; version?: string; error?: string }>;
+  downloadUpdate: () => Promise<{ success: boolean; error?: string }>;
+  installUpdate: () => Promise<{ success: boolean; error?: string }>;
   windowMinimize: () => void;
   windowMaximize: () => void;
   windowClose: () => void;
@@ -122,6 +125,7 @@ export interface WindowOrbitAPI {
   onQueueTaskUpdated: (callback: (data: Partial<Task> & { url: string }) => void) => (() => void);
   onQueueReloadNeeded: (callback: () => void) => (() => void);
   onDependencyStatusChange: (callback: (data: DependencyInfo) => void) => (() => void);
+  onUpdateStatusChange: (callback: (data: { event: string; version?: string; error?: string; percent?: number; bytesPerSecond?: number; transferred?: number; total?: number }) => void) => (() => void);
 }
 
 declare global {

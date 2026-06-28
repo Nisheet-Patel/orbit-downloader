@@ -19,6 +19,11 @@ export function SettingsPage() {
   
   const [dependencies, setDependencies] = useState<Record<string, any>>({});
 
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'>('idle');
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<number>(0);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
   const loadDependencies = useCallback(async () => {
     try {
       const deps = await ipcService.getDependencyStatus();
@@ -33,8 +38,79 @@ export function SettingsPage() {
     const removeListener = ipcService.onDependencyStatusChange((updatedDep) => {
       setDependencies(prev => ({ ...prev, [updatedDep.id]: updatedDep }));
     });
-    return () => removeListener();
+
+    const removeUpdateListener = ipcService.onUpdateStatusChange((data) => {
+      if (data.event === 'checking') {
+        setUpdateStatus('checking');
+        setUpdateError(null);
+      } else if (data.event === 'available') {
+        setUpdateStatus('available');
+        if (data.version) setUpdateVersion(data.version);
+        setUpdateError(null);
+      } else if (data.event === 'not-available') {
+        setUpdateStatus('not-available');
+        if (data.version) setUpdateVersion(data.version);
+        setUpdateError(null);
+      } else if (data.event === 'downloading') {
+        setUpdateStatus('downloading');
+        if (data.percent !== undefined) setUpdateProgress(data.percent);
+      } else if (data.event === 'downloaded') {
+        setUpdateStatus('downloaded');
+        if (data.version) setUpdateVersion(data.version);
+      } else if (data.event === 'error') {
+        setUpdateStatus('error');
+        if (data.error) setUpdateError(data.error);
+      }
+    });
+
+    return () => {
+      removeListener();
+      removeUpdateListener();
+    };
   }, [loadDependencies]);
+
+  const handleCheckUpdates = async () => {
+    setUpdateStatus('checking');
+    setUpdateError(null);
+    try {
+      const res = await ipcService.checkUpdates();
+      if (!res.success) {
+        setUpdateStatus('error');
+        setUpdateError(res.error || 'Failed to check for updates');
+      }
+    } catch (err: any) {
+      setUpdateStatus('error');
+      setUpdateError(err.message || String(err));
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    setUpdateStatus('downloading');
+    setUpdateProgress(0);
+    try {
+      const res = await ipcService.downloadUpdate();
+      if (!res.success) {
+        setUpdateStatus('error');
+        setUpdateError(res.error || 'Failed to download update');
+      }
+    } catch (err: any) {
+      setUpdateStatus('error');
+      setUpdateError(err.message || String(err));
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    try {
+      const res = await ipcService.installUpdate();
+      if (!res.success) {
+        setUpdateStatus('error');
+        setUpdateError(res.error || 'Failed to install update');
+      }
+    } catch (err: any) {
+      setUpdateStatus('error');
+      setUpdateError(err.message || String(err));
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -347,6 +423,102 @@ export function SettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Updates Section */}
+          <div className="pt-5 border-t border-[var(--color-border)] space-y-4">
+            <h3 className="text-sm font-semibold text-[var(--color-text-secondary)] m-0">Updates</h3>
+            <div className="bg-[rgba(0,0,0,0.01)] dark:bg-[rgba(255,255,255,0.01)] border border-[var(--color-border)] rounded-lg p-3 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-[var(--color-text-secondary)]">Current Version</span>
+                <span className="font-mono text-[var(--color-text-primary)]">v{appVersion}</span>
+              </div>
+
+              {updateVersion && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-[var(--color-text-secondary)]">Latest Version</span>
+                  <span className="font-mono text-[var(--color-text-primary)]">v{updateVersion}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-[var(--color-text-secondary)]">Status</span>
+                <span className={`font-semibold capitalize ${
+                  updateStatus === 'checking' ? 'text-[var(--color-accent-purple)]' :
+                  updateStatus === 'available' ? 'text-indigo-400' :
+                  updateStatus === 'not-available' ? 'text-[var(--color-success)]' :
+                  updateStatus === 'downloading' ? 'text-[var(--color-accent-purple)]' :
+                  updateStatus === 'downloaded' ? 'text-[var(--color-success)]' :
+                  updateStatus === 'error' ? 'text-[var(--color-error)]' :
+                  'text-[var(--color-text-disabled)]'
+                }`}>
+                  {updateStatus === 'idle' && 'Up to date'}
+                  {updateStatus === 'checking' && 'Checking...'}
+                  {updateStatus === 'available' && 'Update available'}
+                  {updateStatus === 'not-available' && 'Up to date'}
+                  {updateStatus === 'downloading' && `Downloading (${updateProgress}%)`}
+                  {updateStatus === 'downloaded' && 'Ready to install'}
+                  {updateStatus === 'error' && 'Error'}
+                </span>
+              </div>
+
+              {updateStatus === 'downloading' && (
+                <div className="w-full bg-[var(--color-border)] rounded-full h-1 overflow-hidden mt-1">
+                  <div
+                    className="bg-[var(--color-accent-purple)] h-1 rounded-full transition-all duration-300"
+                    style={{ width: `${updateProgress}%` }}
+                  ></div>
+                </div>
+              )}
+
+              {updateError && (
+                <div className="text-[11px] text-[var(--color-error)] bg-[rgba(232,0,42,0.05)] border border-[rgba(232,0,42,0.1)] rounded p-2 leading-relaxed">
+                  {updateError}
+                </div>
+              )}
+
+              <div className="pt-1 flex gap-2">
+                {(updateStatus === 'idle' || updateStatus === 'not-available' || updateStatus === 'error') && (
+                  <button
+                    onClick={handleCheckUpdates}
+                    className="flex-1 h-9 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:bg-[var(--color-border)] transition-colors cursor-pointer"
+                  >
+                    Check for Updates
+                  </button>
+                )}
+
+                {updateStatus === 'checking' && (
+                  <button
+                    disabled
+                    className="flex-1 h-9 rounded-md text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-disabled)] border border-[var(--color-border)] transition-colors cursor-not-allowed flex items-center justify-center gap-1.5"
+                  >
+                    <svg className="animate-spin h-3.5 w-3.5 text-[var(--color-text-disabled)]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Checking...
+                  </button>
+                )}
+
+                {updateStatus === 'available' && (
+                  <button
+                    onClick={handleDownloadUpdate}
+                    className="flex-1 h-9 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border-0 transition-colors cursor-pointer shadow-sm"
+                  >
+                    Download Update
+                  </button>
+                )}
+
+                {updateStatus === 'downloaded' && (
+                  <button
+                    onClick={handleInstallUpdate}
+                    className="flex-1 h-9 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white border-0 transition-colors cursor-pointer shadow-sm"
+                  >
+                    Install & Restart
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

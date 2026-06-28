@@ -27,6 +27,9 @@ class IPCService {
   getDependencyStatus = () => this.orbit.getDependencyStatus();
   downloadDependency = (id: string) => this.orbit.downloadDependency(id);
   downloadAllDependencies = () => this.orbit.downloadAllDependencies();
+  checkUpdates = () => this.orbit.checkUpdates();
+  downloadUpdate = () => this.orbit.downloadUpdate();
+  installUpdate = () => this.orbit.installUpdate();
   windowMinimize = () => this.orbit.windowMinimize();
   windowMaximize = () => this.orbit.windowMaximize();
   windowClose = () => this.orbit.windowClose();
@@ -38,6 +41,8 @@ class IPCService {
     this.orbit.onQueueReloadNeeded(callback);
   onDependencyStatusChange = (callback: (data: DependencyInfo) => void): (() => void) =>
     this.orbit.onDependencyStatusChange(callback);
+  onUpdateStatusChange = (callback: (data: { event: string; version?: string; error?: string; percent?: number; bytesPerSecond?: number; transferred?: number; total?: number }) => void): (() => void) =>
+    this.orbit.onUpdateStatusChange(callback);
 }
 
 export const ipcService = new IPCService();

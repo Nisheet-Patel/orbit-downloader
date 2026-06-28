@@ -69,6 +69,9 @@ try {
     getDependencyStatus: () => ipcRenderer.invoke('dependency:get-status'),
     downloadDependency: (id) => ipcRenderer.invoke('dependency:download-one', id),
     downloadAllDependencies: () => ipcRenderer.invoke('dependency:download-all'),
+    checkUpdates: () => ipcRenderer.invoke('update:check'),
+    downloadUpdate: () => ipcRenderer.invoke('update:download'),
+    installUpdate: () => ipcRenderer.invoke('update:install'),
     windowMinimize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_MINIMIZE),
     windowMaximize: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_MAXIMIZE),
     windowClose: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_CLOSE),
@@ -100,6 +103,14 @@ try {
     },
     onDependencyStatusChange: (callback) => {
       const channel = 'dependency:status-change';
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on(channel, handler);
+      return () => {
+        ipcRenderer.removeListener(channel, handler);
+      };
+    },
+    onUpdateStatusChange: (callback) => {
+      const channel = 'update:status-change';
       const handler = (_event, data) => callback(data);
       ipcRenderer.on(channel, handler);
       return () => {

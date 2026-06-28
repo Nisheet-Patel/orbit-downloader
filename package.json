@@ -38,7 +38,8 @@
       {
         "provider": "github",
         "owner": "Nisheet-Patel",
-        "repo": "orbit-downloader"
+        "repo": "orbit-downloader",
+        "releaseType": "release"
       }
     ],
     "directories": {

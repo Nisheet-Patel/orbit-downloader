@@ -95,13 +95,14 @@ If downloads fail with errors asking to sign in or confirm you're not a bot:
 
 ---
 
-## 🔄 Automatic Updates
-
-Orbit Downloader automatically checks for updates on startup and every 2 hours in the background.
-
-* **Update Detection**: When a new version is released on GitHub, Orbit Downloader automatically downloads the installer in the background.
-* **Installation**: Once the download completes, a prompt will appear asking you to restart the application to apply the update immediately, or defer the installation until the next time you exit the app.
-* **Logs**: Auto-updater activity is logged to `%USERPROFILE%/AppData/Roaming/orbit-downloader/logs/main.log`.
+## 🔄 Application Updates
+ 
+Orbit Downloader features a completely user-initiated application update flow.
+ 
+* **User Control**: Checking, downloading, and installing updates is performed entirely on-demand via the **Updates** section in **Settings**.
+* **Zero Interruption**: No background update checks, background downloads, or unexpected restart prompts occur during normal application usage.
+* **Download & Install**: If a new version is available, you can initiate the download and click **Install & Restart** once complete to apply the update.
+* **Logs**: Updater activity is logged to `%USERPROFILE%/AppData/Roaming/orbit-downloader/logs/main.log`.
 
 ### 🚀 Creating a New Release
 
