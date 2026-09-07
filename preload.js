@@ -20,6 +20,7 @@ try {
     FFMPEG_RESOLVE: 'ffmpeg:resolve',
     YTDLP_VALIDATE: 'ytdlp:validate',
     YTDLP_ENSURE: 'ytdlp:ensure',
+    YTDLP_UPDATE: 'ytdlp:update',
     DIALOG_CHOOSE_DOWNLOAD_FOLDER: 'dialog:chooseDownloadFolder',
     QUEUE_ADD: 'queue:add',
     QUEUE_REMOVE: 'queue:remove',
@@ -45,6 +46,7 @@ try {
     resolveFfmpeg: (path) => ipcRenderer.invoke(IPC_CHANNELS.FFMPEG_RESOLVE, { path }),
     validateYtDlp: (path) => ipcRenderer.invoke(IPC_CHANNELS.YTDLP_VALIDATE, { path }),
     ensureYtDlp: () => ipcRenderer.invoke(IPC_CHANNELS.YTDLP_ENSURE),
+    updateYtDlp: () => ipcRenderer.invoke(IPC_CHANNELS.YTDLP_UPDATE),
 
     // Dialogs
     chooseDownloadFolder: () => ipcRenderer.invoke(IPC_CHANNELS.DIALOG_CHOOSE_DOWNLOAD_FOLDER),

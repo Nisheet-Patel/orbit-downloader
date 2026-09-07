@@ -1,6 +1,6 @@
 # Orbit Downloader
 
-Orbit Downloader is a modern, premium cross-platform media downloader supporting YouTube, Spotify, and other platforms. Built with Electron and HTML5/CSS3, it offers a dual-mode interface (Single vs. Bulk Download), interactive queue controls, real-time download speed trackers, and dynamic light/dark theme persistence.
+Orbit Downloader is a modern, premium cross-platform media downloader supporting YouTube and other platforms. Built with Electron and HTML5/CSS3, it offers a dual-mode interface (Single vs. Bulk Download), interactive queue controls, real-time download speed trackers, and dynamic light/dark theme persistence.
 
 It uses **yt-dlp** for metadata extraction and media fetching, and **FFmpeg** for high-quality audio extraction and video/audio merging.
 

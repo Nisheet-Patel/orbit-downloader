@@ -63,18 +63,11 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
 
   // 2. Resolve yt-dlp path
   const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
-  if (!ytDlpResult.ok) {
-    // Mark all tasks as error
-    for (const task of tasks) {
-      downloadManager.updateTask(task.id || task.url, {
-        status: STATUS.ERROR,
-        errorMessage: `yt-dlp not available: ${ytDlpResult.error}`
-      }, webContents);
-    }
-    return { success: false, error: ytDlpResult.error };
-  }
+  
+  const ytdlpPath = ytDlpResult.ok ? ytDlpResult.path : null;
 
-  const ytdlpPath = ytDlpResult.path;
+  // We don't fail immediately. We fail per task if the required binary is missing.
+  
   const maxParallel = Math.max(1, Math.min(10, settings.maxParallelDownloads || 3));
   const semaphore = new Semaphore(maxParallel);
 
@@ -102,6 +95,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
       let metadataProcess = null;
       try {
         const getMetadataPromise = new Promise((resolve, reject) => {
+          if (!ytdlpPath) return reject(new Error('yt-dlp is not installed'));
           const args = ['--dump-single-json', '--no-warnings', '--skip-download'];
           if (settings.cookiesFromBrowser) {
             args.push('--cookies-from-browser', settings.cookiesFromBrowser);
@@ -233,7 +227,7 @@ async function startDownloads({ tasks, settings, downloadManager, webContents })
           }
         };
 
-        // Route to the correct download function based on format
+        // Route to the correct download function based on format and platform
         let handle;
         if (isVideo) {
           handle = downloadVideo({ ...downloadParams, quality: task.quality || '1080', ffmpegPath });

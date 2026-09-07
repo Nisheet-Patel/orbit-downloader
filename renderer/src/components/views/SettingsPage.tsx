@@ -16,6 +16,7 @@ export function SettingsPage() {
   const [ffmpegPath, setFfmpegPath] = useState<string>('');
   const [ytdlpPath, setYtdlpPath] = useState<string>('');
   const [activeDownloadDep, setActiveDownloadDep] = useState<string | null>(null);
+  const [ytdlpUpdating, setYtdlpUpdating] = useState<boolean>(false);
   
   const [dependencies, setDependencies] = useState<Record<string, any>>({});
 
@@ -148,6 +149,8 @@ export function SettingsPage() {
           })
           .catch(() => setYtdlpValid('error'));
       }
+
+
     } catch {
       addToast('error', 'Failed to load settings');
     }
@@ -207,6 +210,24 @@ export function SettingsPage() {
       setYtdlpValid('error');
     }
   };
+
+  const updateYtdlp = async () => {
+    setYtdlpUpdating(true);
+    try {
+      const res = await ipcService.updateYtDlp();
+      if (res.success) {
+        addToast('success', 'yt-dlp updated successfully');
+        validateYtdlp();
+      } else {
+        addToast('error', res.error || 'Failed to update yt-dlp');
+      }
+    } catch {
+      addToast('error', 'Failed to update yt-dlp');
+    } finally {
+      setYtdlpUpdating(false);
+    }
+  };
+
 
   return (
     <div className="h-full w-full max-w-[1000px] mx-auto bg-[var(--color-surface-elevated)] rounded-3xl shadow-lg border border-[var(--color-border-subtle)] p-4 sm:p-6 md:p-8 flex flex-col gap-4 md:gap-6 min-h-0">
@@ -382,6 +403,13 @@ export function SettingsPage() {
                 >
                   Validate
                 </button>
+                <button
+                  onClick={updateYtdlp}
+                  disabled={ytdlpUpdating || ytdlpValid === 'error' || ytdlpValid === 'neutral'}
+                  className="h-10 px-4 rounded-md text-sm font-medium bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-border)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {ytdlpUpdating ? 'Updating...' : 'Update'}
+                </button>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 items-center">
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
@@ -424,6 +452,7 @@ export function SettingsPage() {
                 </div>
               )}
             </div>
+
           </div>
 
           {/* Updates Section */}
@@ -527,7 +556,7 @@ export function SettingsPage() {
             <img src="./orbit-logo.svg" alt="Orbit" className="w-14 h-14 object-contain" />
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-bold text-[var(--color-text-primary)] m-0">Orbit Downloader v{appVersion}</h3>
-              <p className="text-xs text-[var(--color-text-secondary)] m-0 mt-0.5">A modern cross-platform media downloader supporting YouTube, Spotify, and other platforms.</p>
+              <p className="text-xs text-[var(--color-text-secondary)] m-0 mt-0.5">A modern cross-platform media downloader supporting YouTube and other platforms.</p>
               <p className="text-xs text-[var(--color-text-primary)] m-0 mt-1">
                 <strong>Developer:</strong>{' '}
                 <a

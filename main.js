@@ -126,6 +126,27 @@ ipcMain.handle(IPC_CHANNELS.YTDLP_ENSURE, async () => {
   return resolveYtDlpPath(settings.ytdlpLocation);
 });
 
+ipcMain.handle(IPC_CHANNELS.YTDLP_UPDATE, async () => {
+  const settings = getSettings();
+  const res = await resolveYtDlpPath(settings.ytdlpLocation);
+  if (!res.ok) return { success: false, error: 'yt-dlp not found' };
+  
+  return new Promise((resolve) => {
+    const child = require('child_process').spawn(res.path, ['-U']);
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', d => stdout += d.toString());
+    child.stderr.on('data', d => stderr += d.toString());
+    
+    child.on('close', code => {
+      if (code === 0) resolve({ success: true, message: stdout });
+      else resolve({ success: false, error: stderr || stdout });
+    });
+  });
+});
+
+
+
 ipcMain.handle(IPC_CHANNELS.DIALOG_CHOOSE_DOWNLOAD_FOLDER, async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory', 'createDirectory'],
@@ -161,19 +182,24 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
   const reversedUrls = [...urls].reverse();
   const settings = getSettings();
   const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
-  if (!ytDlpResult.ok) {
-    return { added: [], duplicates: [], invalid: [], error: 'yt-dlp not found: ' + ytDlpResult.error };
-  }
-  const ytdlpPath = ytDlpResult.path;
+  const ytdlpPath = ytDlpResult.ok ? ytDlpResult.path : null;
   const webContents = getMainWebContents();
 
   for (const url of reversedUrls) {
-    if (!validateYoutubeUrl(url)) {
+    const isYt = validateYoutubeUrl(url);
+
+    if (!isYt) {
       invalid.unshift(url);
       continue;
     }
 
-    if (url.includes('list=')) {
+    const platform = 'youtube';
+
+    if (!ytdlpPath) {
+      return { added: [], duplicates: [], invalid: [], error: 'yt-dlp not found' };
+    }
+
+    if (url.includes('list=') || url.includes('/playlist/') || url.includes('/album/')) {
       const playlistKey = `playlist#${url}#${format}#${quality}`;
       
       if (downloadManager.tasks.has(playlistKey)) {
@@ -182,9 +208,11 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
       }
 
       const playlistContainer = downloadManager.addPlaylist(playlistKey, url, 'Loading playlist...', format, quality);
-      added.unshift({ url, id: playlistKey, isPlaylist: true });
+      // Attach platform
+      downloadManager.updateTask(playlistKey, { platform }, webContents);
+      added.unshift({ url, id: playlistKey, isPlaylist: true, platform });
 
-      // Run playlist metadata fetch asynchronously to prevent blocking the IPC return
+      // Run playlist metadata fetch asynchronously
       (async () => {
         try {
           const info = await getPlaylistInfo(url, ytdlpPath, settings.cookiesFromBrowser);
@@ -195,7 +223,7 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
           // Prepend children to task queue in reverse order
           for (const entry of [...entries].reverse()) {
             const videoUrl = entry.url || `https://www.youtube.com/watch?v=${entry.id}`;
-            const result = downloadManager.addTask(videoUrl, { format, quality, playlistId: playlistKey });
+            const result = downloadManager.addTask(videoUrl, { format, quality, playlistId: playlistKey, platform });
             if (result.id) {
               videoIds.unshift(result.id);
               // Set title and metadata immediately
@@ -226,9 +254,9 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
       })();
     } else {
       // Normal video URL
-      const result = downloadManager.addTask(url, { format, quality });
+      const result = downloadManager.addTask(url, { format, quality, platform });
       if (result.added) {
-        added.unshift({ url, id: result.id });
+        added.unshift({ url, id: result.id, platform });
       } else {
         duplicates.unshift(url);
       }
@@ -241,9 +269,8 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
     (async () => {
       await metadataSemaphore.acquire();
       try {
-        const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
-        if (!ytDlpResult.ok) return;
-        const meta = await getMetadata(item.url, ytDlpResult.path, settings.cookiesFromBrowser);
+        const meta = await getMetadata(item.url, ytdlpPath, settings.cookiesFromBrowser);
+        
         downloadManager.updateTask(item.id, {
           title: meta.title,
           duration: meta.duration,
@@ -337,6 +364,7 @@ ipcMain.handle('app:getVersion', () => {
 
 ipcMain.handle(IPC_CHANNELS.METADATA_FETCH, async (_event, { url }) => {
   const settings = getSettings();
+  
   const ytDlpResult = await resolveYtDlpPath(settings.ytdlpLocation);
   if (!ytDlpResult.ok) {
     return { ok: false, error: ytDlpResult.error || 'yt-dlp not available' };

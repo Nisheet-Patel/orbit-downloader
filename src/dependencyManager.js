@@ -19,7 +19,7 @@ const DEPENDENCY_REGISTRY = {
     id: 'ytdlp',
     name: 'yt-dlp',
     exeName: 'yt-dlp.exe',
-    defaultUrl: 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.06.09/yt-dlp.exe',
+    defaultUrl: 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe',
     validationArgs: ['--version']
   },
   ffmpeg: {
@@ -113,22 +113,22 @@ async function checkAllDependencies() {
   }
   return results;
 }
+const { net } = require('electron');
 
 // Download a file with progress tracking
 function downloadFileWithProgress(url, destPath, onProgress) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destPath);
-    const request = https.get(url, (response) => {
-      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        // Follow redirect
-        return downloadFileWithProgress(response.headers.location, destPath, onProgress).then(resolve).catch(reject);
-      }
-
+    const request = net.request(url);
+    
+    request.on('response', (response) => {
       if (response.statusCode !== 200) {
+        file.close();
         return reject(new Error(`Server returned code ${response.statusCode}`));
       }
 
-      const totalBytes = parseInt(response.headers['content-length'], 10);
+      const contentLength = response.headers['content-length'];
+      const totalBytes = contentLength ? parseInt(Array.isArray(contentLength) ? contentLength[0] : contentLength, 10) : 0;
       let downloadedBytes = 0;
 
       response.on('data', (chunk) => {
@@ -146,7 +146,12 @@ function downloadFileWithProgress(url, destPath, onProgress) {
       });
 
       file.on('finish', () => {
-        file.close(() => resolve());
+        resolve();
+      });
+      
+      file.on('error', (err) => {
+        fs.unlink(destPath, () => {});
+        reject(err);
       });
     });
 
@@ -156,12 +161,13 @@ function downloadFileWithProgress(url, destPath, onProgress) {
       reject(err);
     });
 
-    request.on('timeout', () => {
-      request.destroy();
+    request.on('abort', () => {
       file.close();
       fs.unlink(destPath, () => { });
-      reject(new Error('Connection timed out'));
+      reject(new Error('Request aborted'));
     });
+
+    request.end();
   });
 }
 

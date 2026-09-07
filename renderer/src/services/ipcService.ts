@@ -14,6 +14,7 @@ class IPCService {
   resolveFfmpeg = (path: string) => this.orbit.resolveFfmpeg(path);
   validateYtDlp = (path: string) => this.orbit.validateYtDlp(path);
   ensureYtDlp = () => this.orbit.ensureYtDlp();
+  updateYtDlp = () => this.orbit.updateYtDlp();
   chooseDownloadFolder = () => this.orbit.chooseDownloadFolder();
   queueAdd = (urls: string[], options?: { format?: string; quality?: string }) => this.orbit.queueAdd(urls, options);
   queueRemove = (url: string) => this.orbit.queueRemove(url);

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToastStore } from '@/stores/toastStore';
 import { useDownloadStore } from '@/stores/downloadStore';
-import { validateYoutubeUrl } from '@/utils/validators';
+import { validateUrl } from '@/utils/validators';
 import { useQueue } from '@/hooks/useQueue';
 import { useAppStore } from '@/stores/appStore';
 
@@ -63,7 +63,7 @@ export function SingleDownload() {
   const speed = task?.speed ?? '';
 
   const fetchMeta = useCallback(async (targetUrl: string) => {
-    if (!validateYoutubeUrl(targetUrl)) {
+    if (!validateUrl(targetUrl)) {
       setPreviewState('empty');
       return;
     }
@@ -82,7 +82,7 @@ export function SingleDownload() {
       } else {
         setPreviewState('empty');
         const errLower = (res.error || '').toLowerCase();
-        if (errLower.includes('yt-dlp')) {
+        if (errLower.includes('yt-dlp not available') || errLower.includes('yt-dlp is not installed') || errLower.includes('could not locate yt-dlp')) {
           addToast('error', (
             <span>
               yt-dlp not found.{' '}
@@ -94,6 +94,8 @@ export function SingleDownload() {
               </button>
             </span>
           ));
+        } else {
+          addToast('error', res.error || 'Failed to fetch metadata');
         }
       }
     } catch {
@@ -139,14 +141,14 @@ export function SingleDownload() {
   };
 
   const handleDownload = useCallback(async () => {
-    if (!url.trim() || !validateYoutubeUrl(url.trim())) return;
+    if (!url.trim() || !validateUrl(url.trim())) return;
     setDownloading(true);
     try {
       const res = await addToQueue([url.trim()], { format, quality });
       if (res.error) {
         setDownloading(false);
         const errLower = res.error.toLowerCase();
-        if (errLower.includes('yt-dlp')) {
+        if (errLower.includes('yt-dlp not available') || errLower.includes('yt-dlp is not installed') || errLower.includes('could not locate yt-dlp')) {
           addToast('error', (
             <span>
               yt-dlp not found.{' '}
@@ -158,6 +160,7 @@ export function SingleDownload() {
               </button>
             </span>
           ));
+
         } else if (errLower.includes('ffmpeg')) {
           addToast('error', (
             <span>
@@ -181,7 +184,7 @@ export function SingleDownload() {
         if (!startRes.success) {
           setDownloading(false);
           const errLower = (startRes.error || '').toLowerCase();
-          if (errLower.includes('yt-dlp')) {
+          if (errLower.includes('yt-dlp not available') || errLower.includes('yt-dlp is not installed') || errLower.includes('could not locate yt-dlp')) {
             addToast('error', (
               <span>
                 yt-dlp not found.{' '}
@@ -193,6 +196,7 @@ export function SingleDownload() {
                 </button>
               </span>
             ));
+
           } else if (errLower.includes('ffmpeg')) {
             addToast('error', (
               <span>
@@ -250,7 +254,7 @@ export function SingleDownload() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
-        if (url && validateYoutubeUrl(url) && !downloading) {
+        if (url && validateUrl(url) && !downloading) {
           handleDownload();
         }
       }
@@ -266,7 +270,7 @@ export function SingleDownload() {
       <div className="flex-1 flex flex-col gap-6">
         <div>
           <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Single Download</h2>
-          <p className="text-xs text-[var(--color-text-secondary)] mt-1">Download a single video or audio file from YouTube, Spotify, and other platforms</p>
+          <p className="text-xs text-[var(--color-text-secondary)] mt-1">Download a single video or audio file from YouTube and other platforms</p>
         </div>
 
         <div className="flex gap-2">
@@ -276,7 +280,7 @@ export function SingleDownload() {
               value={url}
               disabled={downloading}
               onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="Paste link here (YouTube, Spotify, etc.)..."
+              placeholder="Paste link here (YouTube, etc.)..."
               className="w-full h-11 pl-4 pr-10 border-[1.5px] border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-disabled)] text-[13px] outline-none transition-all focus:border-[var(--color-accent-red)] focus:shadow-[0_0_0_3px_rgba(232,0,42,0.12)] disabled:opacity-60 disabled:cursor-not-allowed"
             />
             {url && !downloading && (
@@ -356,7 +360,7 @@ export function SingleDownload() {
 
         <div className="mt-2">
           {!downloading ? (
-            <Button variant="primary" onClick={handleDownload} disabled={!url || !validateYoutubeUrl(url)} className="w-full h-12 text-[15px]">
+            <Button variant="primary" onClick={handleDownload} disabled={!url || !validateUrl(url)} className="w-full h-12 text-[15px]">
               ⬇ Download
             </Button>
           ) : (

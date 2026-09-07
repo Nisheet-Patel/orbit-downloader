@@ -23,6 +23,7 @@ const IPC_CHANNELS = Object.freeze({
   FFMPEG_RESOLVE: 'ffmpeg:resolve',
   YTDLP_VALIDATE: 'ytdlp:validate',
   YTDLP_ENSURE: 'ytdlp:ensure',
+  YTDLP_UPDATE: 'ytdlp:update',
   DIALOG_CHOOSE_DOWNLOAD_FOLDER: 'dialog:chooseDownloadFolder',
   QUEUE_ADD: 'queue:add',
   QUEUE_REMOVE: 'queue:remove',

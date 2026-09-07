@@ -9,7 +9,7 @@ class DownloadManager {
     this.activeDownloads = new Map();
   }
 
-  addTask(url, { format = 'audio', quality = '320', playlistId = null } = {}) {
+  addTask(url, { format = 'audio', quality = '320', playlistId = null, platform = 'youtube' } = {}) {
     const key = `${url}#${format}#${quality}`;
     if (this.tasks.has(key)) {
       const existing = this.tasks.get(key);
@@ -30,7 +30,8 @@ class DownloadManager {
       filePath: '',
       format,
       quality,
-      playlistId
+      playlistId,
+      platform
     };
     // Prepend new task to insert at the top of the queue
     const newTasks = new Map();
@@ -42,7 +43,7 @@ class DownloadManager {
     return { added: true, id: key };
   }
 
-  addPlaylist(key, playlistUrl, title, format, quality) {
+  addPlaylist(key, playlistUrl, title, format, quality, platform = 'youtube') {
     const newTask = {
       id: key,
       url: playlistUrl,
@@ -53,7 +54,8 @@ class DownloadManager {
       isPlaylist: true,
       videoIds: [],
       format,
-      quality
+      quality,
+      platform
     };
     const newTasks = new Map();
     newTasks.set(key, newTask);

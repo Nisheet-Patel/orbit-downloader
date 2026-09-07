@@ -45,6 +45,7 @@ export interface Task {
   isPlaylist?: boolean;
   videoIds?: string[];
   playlistId?: string;
+  platform?: 'youtube';
 }
 
 export interface Toast {

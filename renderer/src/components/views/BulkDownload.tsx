@@ -5,7 +5,7 @@ import { useQueue } from '@/hooks/useQueue';
 import { useDownloadStore } from '@/stores/downloadStore';
 import { useAppStore } from '@/stores/appStore';
 import { shallow } from 'zustand/shallow';
-import { validateYoutubeUrl } from '@/utils/validators';
+import { validateUrl } from '@/utils/validators';
 import { QueueItem } from '@/components/ui/QueueItem';
 import { PlaylistQueueItem } from '@/components/ui/PlaylistQueueItem';
 
@@ -42,7 +42,7 @@ export function BulkDownload() {
 
   const handleAdd = useCallback(async () => {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    const urls = lines.filter((l) => validateYoutubeUrl(l));
+    const urls = lines.filter((l) => validateUrl(l));
     if (urls.length === 0) {
       addToast('warning', 'No valid URLs found');
       return;
@@ -51,7 +51,7 @@ export function BulkDownload() {
     const res = await addToQueue(urls, { format, quality });
     if (res.error) {
       const errLower = res.error.toLowerCase();
-      if (errLower.includes('yt-dlp')) {
+      if (errLower.includes('yt-dlp not available') || errLower.includes('yt-dlp is not installed') || errLower.includes('could not locate yt-dlp')) {
         addToast('error', (
           <span>
             yt-dlp not found.{' '}
@@ -63,6 +63,7 @@ export function BulkDownload() {
             </button>
           </span>
         ));
+
       } else if (errLower.includes('ffmpeg')) {
         addToast('error', (
           <span>
@@ -116,7 +117,7 @@ export function BulkDownload() {
       addToast('info', 'Downloads started');
     } else {
       const errLower = (res.error || '').toLowerCase();
-      if (errLower.includes('yt-dlp')) {
+      if (errLower.includes('yt-dlp not available') || errLower.includes('yt-dlp is not installed') || errLower.includes('could not locate yt-dlp')) {
         addToast('error', (
           <span>
             yt-dlp not found.{' '}
@@ -128,6 +129,7 @@ export function BulkDownload() {
             </button>
           </span>
         ));
+
       } else if (errLower.includes('ffmpeg')) {
         addToast('error', (
           <span>
@@ -181,7 +183,7 @@ export function BulkDownload() {
     <div className="h-full max-w-[1000px] mx-auto bg-[var(--color-surface-elevated)] rounded-3xl shadow-lg border border-[var(--color-border-subtle)] p-8 flex flex-col gap-6 min-h-0">
       <div>
         <h1 className="text-[28px] font-bold text-[var(--color-text-primary)]">Bulk Download</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] max-w-[450px]">Add multiple media URLs (YouTube, Spotify, etc.) to the queue and download them all at once.</p>
+        <p className="text-sm text-[var(--color-text-secondary)] max-w-[450px]">Add multiple media URLs (YouTube, etc.) to the queue and download them all at once.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch flex-1 min-h-0">
@@ -193,7 +195,7 @@ export function BulkDownload() {
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Paste URLs here (YouTube, Spotify, etc.), one per line...&#10;https://www.youtube.com/watch?v=..."
+                placeholder="Paste URLs here (YouTube, etc.), one per line...&#10;https://www.youtube.com/watch?v=..."
                 className="w-full h-full resize-none bg-transparent border-0 outline-none p-4 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-disabled)] font-[family:inherit] leading-relaxed"
               />
             </div>
