@@ -46,6 +46,8 @@ export interface Task {
   videoIds?: string[];
   playlistId?: string;
   platform?: 'youtube';
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface Toast {
@@ -105,7 +107,7 @@ export interface WindowOrbitAPI {
   ensureYtDlp: () => Promise<{ ok: boolean; path?: string; source?: string; error?: string }>;
   updateYtDlp: () => Promise<{ success: boolean; message?: string; error?: string }>;
   chooseDownloadFolder: () => Promise<string | null>;
-  queueAdd: (urls: string[], options?: { format?: string; quality?: string }) => Promise<QueueResult>;
+  queueAdd: (urls: string[], options?: { format?: string; quality?: string; startTime?: string; endTime?: string }) => Promise<QueueResult>;
   queueRemove: (url: string) => Promise<{ success: boolean }>;
   queueClear: () => Promise<{ success: boolean }>;
   queueGet: () => Promise<Task[]>;

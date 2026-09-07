@@ -34,6 +34,9 @@ export function SingleDownload() {
   const [previewState, setPreviewState] = useState<'empty' | 'skeleton' | 'loaded'>('empty');
   const [meta, setMeta] = useState<{ title: string; thumbnailUrl: string; duration: number; channel: string; viewCount: number } | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setMode = useAppStore((s) => s.setMode);
   const setBulkText = useAppStore((s) => s.setBulkText);
@@ -144,7 +147,12 @@ export function SingleDownload() {
     if (!url.trim() || !validateUrl(url.trim())) return;
     setDownloading(true);
     try {
-      const res = await addToQueue([url.trim()], { format, quality });
+      const res = await addToQueue([url.trim()], { 
+        format, 
+        quality,
+        startTime: startTime.trim() || undefined,
+        endTime: endTime.trim() || undefined
+      });
       if (res.error) {
         setDownloading(false);
         const errLower = res.error.toLowerCase();
@@ -356,6 +364,41 @@ export function SingleDownload() {
               <option key={q.value} value={q.value}>{q.label}</option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <button 
+            onClick={() => setAdvancedOpen(!advancedOpen)}
+            className="flex items-center gap-1 text-[13px] font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors bg-transparent border-0 p-0 cursor-pointer"
+          >
+            <span className={`material-icons text-[18px] transition-transform ${advancedOpen ? 'rotate-180' : ''}`}>expand_more</span>
+            Advanced Options
+          </button>
+          
+          {advancedOpen && (
+            <div className="mt-4 p-4 bg-[rgba(0,0,0,0.02)] dark:bg-[rgba(255,255,255,0.02)] border border-[var(--color-border-subtle)] rounded-lg flex gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Start Time (optional)</label>
+                <input 
+                  type="text" 
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  placeholder="e.g. 00:01:30 or 1m30s"
+                  className="w-full h-9 px-3 border border-[var(--color-border)] rounded bg-[var(--color-surface)] text-[13px] text-[var(--color-text-primary)] placeholder-[var(--color-text-disabled)] outline-none focus:border-[var(--color-accent-red)] transition-colors"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">End Time / Duration (optional)</label>
+                <input 
+                  type="text" 
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  placeholder="e.g. 00:02:45 or 2m45s"
+                  className="w-full h-9 px-3 border border-[var(--color-border)] rounded bg-[var(--color-surface)] text-[13px] text-[var(--color-text-primary)] placeholder-[var(--color-text-disabled)] outline-none focus:border-[var(--color-accent-red)] transition-colors"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-2">

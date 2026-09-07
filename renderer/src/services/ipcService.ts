@@ -16,7 +16,7 @@ class IPCService {
   ensureYtDlp = () => this.orbit.ensureYtDlp();
   updateYtDlp = () => this.orbit.updateYtDlp();
   chooseDownloadFolder = () => this.orbit.chooseDownloadFolder();
-  queueAdd = (urls: string[], options?: { format?: string; quality?: string }) => this.orbit.queueAdd(urls, options);
+  queueAdd = (urls: string[], options?: { format?: string; quality?: string; startTime?: string; endTime?: string }) => this.orbit.queueAdd(urls, options);
   queueRemove = (url: string) => this.orbit.queueRemove(url);
   queueClear = () => this.orbit.queueClear();
   queueGet = () => this.orbit.queueGet();

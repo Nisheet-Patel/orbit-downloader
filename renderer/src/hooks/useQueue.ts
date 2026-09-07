@@ -17,7 +17,7 @@ export function useQueue() {
     }
   }, [setAllTasks]);
 
-  const addToQueue = useCallback(async (urls: string[], options?: { format?: string; quality?: string }): Promise<QueueResult> => {
+  const addToQueue = useCallback(async (urls: string[], options?: { format?: string; quality?: string; startTime?: string; endTime?: string }): Promise<QueueResult> => {
     const res = await ipcService.queueAdd(urls, options);
     await loadQueue();
     return res;

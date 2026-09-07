@@ -170,6 +170,8 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
   const urls = Array.isArray(payload) ? payload : (payload.urls || []);
   const format = Array.isArray(payload) ? 'audio' : (payload.format || 'audio');
   const quality = Array.isArray(payload) ? '320' : (payload.quality || '320');
+  const startTime = Array.isArray(payload) ? undefined : payload.startTime;
+  const endTime = Array.isArray(payload) ? undefined : payload.endTime;
 
   if (!Array.isArray(urls)) {
     return { added: [], duplicates: [], invalid: [] };
@@ -254,7 +256,7 @@ ipcMain.handle(IPC_CHANNELS.QUEUE_ADD, async (_event, payload) => {
       })();
     } else {
       // Normal video URL
-      const result = downloadManager.addTask(url, { format, quality, platform });
+      const result = downloadManager.addTask(url, { format, quality, platform, startTime, endTime });
       if (result.added) {
         added.unshift({ url, id: result.id, platform });
       } else {

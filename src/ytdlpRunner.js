@@ -109,6 +109,12 @@ function downloadAudio({ url, task, settings, ytdlpPath, ffmpegPath, onProgress,
     args.push('--cookies-from-browser', settings.cookiesFromBrowser);
   }
 
+  if (task && (task.startTime || task.endTime)) {
+    const st = task.startTime || '0';
+    const et = task.endTime || 'inf';
+    args.push('--download-sections', `*${st}-${et}`, '--force-keyframes-at-cuts');
+  }
+
   // Long video (> 30 min) handling
   if (task && task.duration && task.duration > 1800) {
     args.push('--fragment-retries', '5', '--concurrent-fragments', '6');
@@ -224,6 +230,12 @@ function downloadVideo({ url, task, settings, ytdlpPath, quality, ffmpegPath, on
 
   if (settings && settings.cookiesFromBrowser) {
     args.push('--cookies-from-browser', settings.cookiesFromBrowser);
+  }
+
+  if (task && (task.startTime || task.endTime)) {
+    const st = task.startTime || '0';
+    const et = task.endTime || 'inf';
+    args.push('--download-sections', `*${st}-${et}`, '--force-keyframes-at-cuts');
   }
 
   if (task && task.duration && task.duration > 1800) {

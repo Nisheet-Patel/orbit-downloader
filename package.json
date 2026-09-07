@@ -1,6 +1,6 @@
 {
   "name": "orbit-downloader",
-  "version": "0.3.5",
+  "version": "0.3.7",
   "description": "Orbit Downloader – A modern cross-platform media downloader supporting YouTube and other platforms.",
   "main": "main.js",
   "scripts": {

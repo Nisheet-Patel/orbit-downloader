@@ -57,7 +57,9 @@ try {
       return ipcRenderer.invoke(IPC_CHANNELS.QUEUE_ADD, {
         urls,
         format: opts.format || 'audio',
-        quality: opts.quality || '320'
+        quality: opts.quality || '320',
+        startTime: opts.startTime,
+        endTime: opts.endTime
       });
     },
     queueRemove: (idOrUrl) => ipcRenderer.invoke(IPC_CHANNELS.QUEUE_REMOVE, { id: idOrUrl, url: idOrUrl }),
