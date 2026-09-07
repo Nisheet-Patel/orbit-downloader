@@ -103,6 +103,7 @@ export interface WindowOrbitAPI {
   resolveFfmpeg: (path: string) => Promise<{ ok: boolean; path?: string; error?: string }>;
   validateYtDlp: (path: string) => Promise<ValidationResult>;
   ensureYtDlp: () => Promise<{ ok: boolean; path?: string; source?: string; error?: string }>;
+  updateYtDlp: () => Promise<{ success: boolean; message?: string; error?: string }>;
   chooseDownloadFolder: () => Promise<string | null>;
   queueAdd: (urls: string[], options?: { format?: string; quality?: string }) => Promise<QueueResult>;
   queueRemove: (url: string) => Promise<{ success: boolean }>;
